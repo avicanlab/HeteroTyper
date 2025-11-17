@@ -11,8 +11,8 @@ The comptutational pipeline in ```MATLAB``` includes different optimizations for
 
 ### 2) Bright & Dark Plate Images
 Sample images to test the computational pipeline are also included in this repository. Images can be found under: 
-- _Images/Bright/_ for bright plates
-- _Images/Dark/_ for dark plates
+- _Images/Bright/_ for bright plates (Sample Groups: 3h, 7h, 24h, 48h)
+- _Images/Dark/_ for dark plates (Sample Groups: MLN, Spleen (SPL), Liver)
 
 
 ## Contacts
