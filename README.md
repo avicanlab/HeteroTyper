@@ -15,6 +15,10 @@ Sample images to test the computational pipeline are also included in this repos
 - _Images/Dark/_ for dark plates (Sample Groups: MLN, Spleen (SPL), Liver)
 
 
+### 3) Sample Information
+Information regarding all the samples is provided in ```Metadata.xlsx```. This file contains the experimental metadata associated with the samples images. It includes two sheets: ```Meta_Bright```, which provides information for bright plates (columns: ```Position```, ```Time```, ```Replicate```, ```Dilution```, ```Count```), and ```Meta_Dark```, which provides information for dark plates (columns: ```Position```, ```Mouse```, ```Organ```, ```Dilution```, ```Count```)
+
+
 ## Contacts
 For queries on the implementation and data, please contact:
 - kemal.avican@umu.se
