@@ -20,6 +20,9 @@ Information regarding all the samples is provided in ```Metadata.xlsx```. This f
 - ```Meta_Bright```, which provides information for bright plates (columns: ```Position```, ```Time```, ```Replicate```, ```Dilution```, ```Count```),
 - ```Meta_Dark```, which provides information for dark plates (columns: ```Position```, ```Mouse```, ```Organ```, ```Dilution```, ```Count```)
 
+### 4) Implementation Manual
+Please refer to the ```HeteroTyper Computational Pipeline Instructions.docx``` file. This document provides information on how to use the code and detailed descriptions of each function, as well as guidance on which parameters can be modified if the user decides to apply the pipeline to their own data.
+
 
 ## Contacts
 For queries on the implementation and data, please contact:
