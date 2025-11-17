@@ -4,7 +4,9 @@ This repository contains the computational pipeline in MATLAB within HeteroTyper
 ## Repository Organization
 
 ### 1) Computational Pipeline
-The comptutational pipeline in ```MATLAB``` includes different optimizations for bright and dark agar plates. The implementation for bright plates is available under _HeteroTyper (Bright)/_ and for dark plates is available under _HeteroTyper (Dark)/_.
+The comptutational pipeline in ```MATLAB``` includes different optimizations for bright and dark agar plates. The implementations are available under:
+- _HeteroTyper (Bright)/_ for bright plates
+- _HeteroTyper (Dark)/_ for dark plates
 
 
 ### 2) Bright & Dark Plate Images
