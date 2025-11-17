@@ -5,18 +5,20 @@ This repository contains the computational pipeline in MATLAB within HeteroTyper
 
 ### 1) Computational Pipeline
 The comptutational pipeline in ```MATLAB``` includes different optimizations for bright and dark agar plates. The implementations are available under:
-- _HeteroTyper (Bright)/_ for bright plates
+- _HeteroTyper (Bright)/_ for bright plates,
 - _HeteroTyper (Dark)/_ for dark plates
 
 
 ### 2) Bright & Dark Plate Images
 Sample images to test the computational pipeline are also included in this repository. Images can be found under: 
-- _Images/Bright/_ for bright plates (Sample Groups: 3h, 7h, 24h, 48h)
+- _Images/Bright/_ for bright plates (Sample Groups: 3h, 7h, 24h, 48h),
 - _Images/Dark/_ for dark plates (Sample Groups: MLN, Spleen (SPL), Liver)
 
 
 ### 3) Sample Information
-Information regarding all the samples is provided in ```Metadata.xlsx```. This file contains the experimental metadata associated with the samples images. It includes two sheets: ```Meta_Bright```, which provides information for bright plates (columns: ```Position```, ```Time```, ```Replicate```, ```Dilution```, ```Count```), and ```Meta_Dark```, which provides information for dark plates (columns: ```Position```, ```Mouse```, ```Organ```, ```Dilution```, ```Count```)
+Information regarding all the samples is provided in ```Metadata.xlsx```. This file contains the experimental metadata associated with the samples images. It includes two sheets: 
+- ```Meta_Bright```, which provides information for bright plates (columns: ```Position```, ```Time```, ```Replicate```, ```Dilution```, ```Count```),
+- ```Meta_Dark```, which provides information for dark plates (columns: ```Position```, ```Mouse```, ```Organ```, ```Dilution```, ```Count```)
 
 
 ## Contacts
