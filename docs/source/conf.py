@@ -40,8 +40,16 @@ html_theme_options = {
     "use_edit_page_button": True,
     "footer_start": ["copyright"],
     "footer_end": ["theme-version"],
-    "footer_center": ["sphinx-version"]
+    "footer_center": ["sphinx-version"],
+    "logo": {
+        "text": "HeteroTyper",
+        "alt_text": "HeteroTyper documentation - Home",
+        "image_light": "_static/Logo_new_March2026.svg",
+        "image_dark": "_static/Logo_new_March2026.svg",
+        },
 }
+
+html_logo = "_static/Logo_new_March2026.svg"
 
 html_context = {
     "github_user": "avicanlab",
