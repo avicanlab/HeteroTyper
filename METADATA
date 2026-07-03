@@ -1,0 +1,8 @@
+Title: HeteroTyper
+Version: 1.0.0
+Author: Kemal Avican <kemal.avican@umu.se>; Sena Gizem <sena.gizem@umu.se>; Karl Kochanowski <karl.kochanowski@irta.cat>
+Maintainer: Avican Lab
+License: Apache-2.0
+Copyright: 2026 Avican Lab
+Description: MATLAB pipeline for quantifying bacterial heterogeneity from time-lapse agar plate images using lag time, morphology, and robust segmentation for bright and dark agar plates.
+Contact: kemal.avican@umu.se, sena.gizem@umu.se
