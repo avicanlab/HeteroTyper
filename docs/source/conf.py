@@ -38,6 +38,9 @@ html_theme_options = {
     "navigation_with_keys": True,
     "navbar_align": "left",
     "use_edit_page_button": True,
+    "footer_start": ["copyright"],
+    "footer_end": ["theme-version"],
+    "footer_center": ["sphinx-version"]
 }
 
 html_context = {
