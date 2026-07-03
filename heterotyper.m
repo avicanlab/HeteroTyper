@@ -1,6 +1,6 @@
 %% 18.05.2026 - HeteroTyper Computational Pipeline
 
-function data = HeteroTyper_colony_growth_quantification()
+function data = heterotyper()
 
 addpath('.\Code');
 

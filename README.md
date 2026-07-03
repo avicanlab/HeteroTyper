@@ -21,8 +21,27 @@ Information regarding all the samples is provided in ```Metadata.xlsx```. This f
 - ```Meta_Dark```, which provides information for dark plates (columns: ```Position```, ```Mouse```, ```Organ```, ```Dilution```, ```Count```)
 
 ### 4) Implementation Manual
-Please refer to the ```HeteroTyper Computational Pipeline Instructions.docx``` file. This document provides information on how to use the code and detailed descriptions of each function, as well as guidance on which parameters can be modified if the user decides to apply the pipeline to their own data.
+The full user manual — setup, initialization, preprocessing, and a reference page for
+every analysis/export script — is published at [ReadTheDocs](https://heterotyper.readthedocs.io)
+and built from the [`docs/`](docs/) folder in this repository. See
+[Documentation](#documentation) below for how to build it locally.
 
+## Documentation
+
+The documentation lives in [`docs/`](docs/) as MyST Markdown and is built with
+[Sphinx](https://www.sphinx-doc.org/) using the
+[PyData Sphinx Theme](https://pydata-sphinx-theme.readthedocs.io/). It is published
+automatically on [ReadTheDocs](https://readthedocs.org/) from the `main` branch.
+
+To build it locally:
+
+```bash
+cd docs
+pip install -r requirements.txt
+make html        # On Windows: .\make.bat html
+```
+
+The rendered site is written to `docs/build/html/index.html`.
 
 ## Contacts
 For queries on the implementation and data, please contact:

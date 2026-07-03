@@ -52,7 +52,7 @@ function [colony_flag,mask_clean] = colony_artifact_flag(img,colonies,radius,cen
         m_original_plot = m;
         m_original_plot(m_original_plot>0) = 1;
 
-        % Figure name must match what HeteroTyper_colony_growth_quantification
+        % Figure name must match what heterotyper
         % searches for when saving: strcat(fn(i).name,' - colony cleanup')
         % The position name is not available here so we use a fixed name;
         % the main script finds it by the 'colony cleanup' suffix.
