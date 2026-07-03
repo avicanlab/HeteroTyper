@@ -1,53 +1,44 @@
 # HeteroTyper
-This repository contains the computational pipeline in MATLAB within HeteroTyper to quantify bacterial  heterogeneity in given population from time-lapse agar plate images by extracting lag time, morphology-related parameters with robust segmentation on bright and dark media.
 
-## Repository Organization
+Automated, high-throughput system for imaging bacterial colonies and quantifying phenotypic heterogeneity, including lag time, growth rate, doubling time, final colony size, and shape descriptors, at the single-colony level.
 
-### 1) Computational Pipeline
-The comptutational pipeline in ```MATLAB``` includes different optimizations for bright and dark agar plates. The implementations are available under:
-- _HeteroTyper (Bright)/_ for bright plates,
-- _HeteroTyper (Dark)/_ for dark plates
+HeteroTyper consists of two components:
 
+- **Imaging platform**: a repurposed laser cutter gantry fitted with a GoPro HERO 10 Black camera and an Arduino Nano controller, capable of capturing time-lapse images of up to 104 agar plates per run.
+- **Computational pipeline**: a MATLAB pipeline that segments individual colonies from the time-lapse images and extracts growth and morphology metrics for each colony.
 
-### 2) Bright & Dark Plate Images
-Sample images to test the computational pipeline are also included in this repository. Images can be found under: 
-- _Images/Bright/_ for bright plates (Sample Groups: 3h, 7h, 24h, 48h),
-- _Images/Dark/_ for dark plates (Sample Groups: MLN, Spleen (SPL), Liver)
+## Universal plate-type pipeline
 
+The computational pipeline runs a single, universal segmentation and analysis workflow across plate types, with no separate configuration required per agar type. It has been tested on:
 
-### 3) Sample Information
-Information regarding all the samples is provided in ```Metadata.xlsx```. This file contains the experimental metadata associated with the samples images. It includes two sheets: 
-- ```Meta_Bright```, which provides information for bright plates (columns: ```Position```, ```Time```, ```Replicate```, ```Dilution```, ```Count```),
-- ```Meta_Dark```, which provides information for dark plates (columns: ```Position```, ```Mouse```, ```Organ```, ```Dilution```, ```Count```)
+- **Bright-background media**: Luria-Bertani agar (LA)
+- **Dark-background media**: blood agar (BA), MacConkey agar (MC), *Yersinia* Selective Agar (YSA)
 
-### 4) Implementation Manual
-The full user manual — setup, initialization, preprocessing, and a reference page for
-every analysis/export script — is published at [ReadTheDocs](https://heterotyper.readthedocs.io)
-and built from the [`docs/`](docs/) folder in this repository. See
-[Documentation](#documentation) below for how to build it locally.
+No programming background is required to run the pipeline, though basic familiarity with MATLAB is helpful. The only requirement is that colonies of the species of interest have a roughly circular appearance, as segmentation and morphology analysis are optimized for this geometry.
 
-## Documentation
+## Repository contents
 
-The documentation lives in [`docs/`](docs/) as MyST Markdown and is built with
-[Sphinx](https://www.sphinx-doc.org/) using the
-[PyData Sphinx Theme](https://pydata-sphinx-theme.readthedocs.io/). It is published
-automatically on [ReadTheDocs](https://readthedocs.org/) from the `main` branch.
+- **`heterotyper.m`** — Main script for initializing and running the pipeline
+- **`/Code`** — Downstream analysis scripts (preprocessing, quality control (QC), and analysis/plotting functions)
 
-To build it locally:
+## Getting started
 
-```bash
-cd docs
-pip install -r requirements.txt
-make html        # On Windows: .\make.bat html
-```
+1. Install MATLAB (R2020a or later).
+2. Clone this repository and open the `HeteroTyper Pipeline` folder in MATLAB.
+3. Initialize the pipeline from the Command Window:
 
-The rendered site is written to `docs/build/html/index.html`.
+   ```matlab
+   NAME_OF_YOUR_DATA = heterotyper();
+   ```
 
-## Contacts
-For queries on the implementation and data, please contact:
-- kemal.avican@umu.se
-- sena.gizem@umu.se
+4. Run preprocessing on your dataset:
 
+   ```matlab
+   preprocess_pipeline_data(NAME_OF_YOUR_DATA);
+   ```
 
-## Funding
-This work was supported by Swedish Research Council (No. 2021-02466), Kempestiftelserna (JCK22-0017), and the Medical Faculty at Umeå University (FS 2.1.6-281-22) to K. Avican, by Swedish Research Council Excellence Center grant (No. 2022-06543) for the Center for Modeling Adaptive Mechanisms in Living Systems Under Stress to K. Avican. We acknowledge µNordic Single Cell Hub (µNiSCH) and Small Animal Research Imaging Facility (SARIF) at Umeå University. K. Kochanowski is supported by the Spanish Ministry of Research and Innovation (Grant number: RYC2021-033035-I /AEI/10.13039/501100011033).
+Full setup and usage instructions, including all preprocessing prompts and every downstream analysis script, are documented in the [Pipeline User Guide](https://heterotyper.readthedocs.io/).
+
+## Applications
+
+Potential applications include basic research into bacterial population heterogeneity and antibiotic sensitivity testing to optimize treatment of bacterial infections.
