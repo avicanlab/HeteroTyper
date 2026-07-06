@@ -20,6 +20,7 @@ No programming background is required to run the pipeline, though basic familiar
 
 - **`heterotyper.m`** — Main script for initializing and running the pipeline
 - **`/Code`** — Downstream analysis scripts (preprocessing, quality control (QC), and analysis/plotting functions)
+- **`/arduino`** — Arduino Nano script (`Ardunio_setupfile_v1.ino`) that coordinates image capture on the imaging platform
 
 ## Getting started
 

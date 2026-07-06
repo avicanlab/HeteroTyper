@@ -38,7 +38,9 @@ created on the storage medium.
 
 An Arduino Nano microcontroller serves as the central controller for coordinating
 image capture. It interfaces with the GoPro HERO 10 Black and the laser cutter's
-existing signal output to automate the imaging process.
+existing signal output to automate the imaging process. The Arduino script that
+implements this behaviour, `Ardunio_setupfile_v1.ino`, is provided in the `/arduino`
+folder of the repository.
 
 ### Circuit Overview
 
