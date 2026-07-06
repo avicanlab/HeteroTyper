@@ -6,8 +6,8 @@
 # this one lives in its own sub-folder instead. On the "HeteroTyper Imaging"
 # project, set Settings > "Path for .readthedocs.yaml" to:
 #   imaging-docs/.readthedocs.yaml
-# Paths below are relative to this file's own location (imaging-docs/), not
-# the repository root.
+# Paths below are resolved relative to the repository root (not this file's
+# own location), same as any other .readthedocs.yaml.
 # See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
 
 version: 2
@@ -18,8 +18,8 @@ build:
     python: "3.12"
 
 sphinx:
-  configuration: source/conf.py
+  configuration: imaging-docs/source/conf.py
 
 python:
   install:
-    - requirements: requirements.txt
+    - requirements: imaging-docs/requirements.txt
