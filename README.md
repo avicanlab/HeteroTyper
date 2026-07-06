@@ -4,7 +4,7 @@ Automated, high-throughput system for imaging bacterial colonies and quantifying
 
 HeteroTyper consists of two components:
 
-- **Imaging platform**: a repurposed laser cutter gantry fitted with a GoPro HERO 10 Black camera and an Arduino Nano controller, capable of capturing time-lapse images of up to 104 agar plates per run.
+- **Imaging platform**: a repurposed laser cutter gantry fitted with a GoPro HERO 10 Black camera and an Arduino Nano controller, capable of capturing time-lapse images of up to 104 agar plates per run. The hardware architecture, lighting design, camera selection, and Arduino Nano controller circuit are documented in [Imaging Platform Information](https://heterotyper-imaging.readthedocs.io/).
 - **Computational pipeline**: a MATLAB pipeline that segments individual colonies from the time-lapse images and extracts growth and morphology metrics for each colony.
 
 ## Universal plate-type pipeline

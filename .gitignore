@@ -1,2 +1,4 @@
 docs/.venv-build
 docs/build
+imaging-docs/.venv-build
+imaging-docs/build
