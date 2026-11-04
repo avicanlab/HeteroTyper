@@ -1,6 +1,6 @@
-%% HeteroTyper Pipeline for Bright Plates
+%% HeteroTyper Pipeline
 % Exports cropped colony images (blended raw + segmentation) for colonies
-% with lag time above a user-defined threshold.
+% with appearance time above a user-defined threshold.
 % Uses the same colony population as plot_combined_samples — filtering
 % is read from ht.groups; no re-filtering from raw data.
 %
@@ -33,18 +33,18 @@ function export_colony_images(data, ht)
     ht_fprintf(HT_FLOG, 'Log file: %s\n', log_path);
 
     % ------------------------------------------------------------------
-    %  Ask user for lag-time threshold
+    %  Ask user for appearance-time threshold
     % ------------------------------------------------------------------
-    fprintf('\n--- Lag-time threshold for colony image export ---\n');
-    fprintf('   Only colonies with lag_time > threshold will be exported.\n');
+    fprintf('\n--- Appearance-time threshold for colony image export ---\n');
+    fprintf('   Only colonies with appearance_time > threshold will be exported.\n');
     while true
-        raw = strtrim(input('   Enter lag-time threshold in hours [e.g. 38]: ', 's'));
-        lag_threshold = str2double(raw);
-        if ~isnan(lag_threshold) && lag_threshold >= 0, break; end
+        raw = strtrim(input('   Enter appearance-time threshold in hours [e.g. 38]: ', 's'));
+        appearance_threshold = str2double(raw);
+        if ~isnan(appearance_threshold) && appearance_threshold >= 0, break; end
         fprintf('   WARNING  Please enter a non-negative number.\n');
     end
-    fprintf('   -> Lag-time threshold: %.4g h\n\n', lag_threshold);
-    ht_fprintf(HT_FLOG, 'Lag-time threshold: %.4g h\n\n', lag_threshold);
+    fprintf('   -> Appearance-time threshold: %.4g h\n\n', appearance_threshold);
+    ht_fprintf(HT_FLOG, 'Appearance-time threshold: %.4g h\n\n', appearance_threshold);
 
     crop_size = 150;
 
@@ -68,10 +68,10 @@ function export_colony_images(data, ht)
             plate_count = plate_count + 1;
 
             colonies = data.processed{plate_idx}.colonies;
-            if ~isfield(colonies, 'new') || ~isfield(colonies.new, 'lag_time')
+            if ~isfield(colonies, 'new') || ~isfield(colonies.new, 'appearance_time')
                 continue;
             end
-            n_here = length(colonies.new.lag_time);
+            n_here = length(colonies.new.appearance_time);
             if n_here == 0, continue; end
 
             idx_range = slot + (1:n_here);
@@ -82,7 +82,7 @@ function export_colony_images(data, ht)
             if iscell(pos_raw), plate_no = pos_raw{1}; else, plate_no = pos_raw; end
 
             % Slice ht.groups arrays for this plate's colonies
-            lag_p  = grp.lag_time(idx_range);
+            appearance_p  = grp.appearance_time(idx_range);
             size_p = grp.size(idx_range);
             int_p  = grp.intensity(idx_range);
             cen_p  = grp.centroid(idx_range, :);
@@ -98,10 +98,10 @@ function export_colony_images(data, ht)
 
             % ------------------------------------------------------------------
             %  Select colonies: same population as plot_combined_samples
-            %  (non-NaN size = passed size filter) PLUS lag > threshold.
+            %  (non-NaN size = passed size filter) PLUS appearance > threshold.
             %  No additional ecc_threshold filter — matches plot_combined_samples.
             % ------------------------------------------------------------------
-            target = find(~isnan(size_p) & isfinite(lag_p) & (lag_p > lag_threshold));
+            target = find(~isnan(size_p) & isfinite(appearance_p) & (appearance_p > appearance_threshold));
 
             if isempty(target)
                 ht_fprintf(HT_FLOG, 'Plate %s (%s): 0 colonies above threshold\n', ...
@@ -132,7 +132,7 @@ function export_colony_images(data, ht)
                 blended  = imfuse(repmat(gray_img, [1 1 3]), cropped_mask, 'blend');
 
                 text_lines = { ...
-                    sprintf('Lag=%.1f',     lag_p(ci)), ...
+                    sprintf('Appearance=%.1f',     appearance_p(ci)), ...
                     sprintf('Size=%.2f',    size_p(ci)), ...
                     sprintf('Int=%.1f',     int_p(ci)), ...
                     sprintf('MeanInt=%.1f', mint_p(ci)), ...

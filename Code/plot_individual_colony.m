@@ -1,4 +1,4 @@
-%% 11.11.2025 - HeteroTyper Pipeline for Bright Plates
+%% HeteroTyper Pipeline
 
 function plot_individual_colony(data)
 
@@ -63,7 +63,7 @@ function plot_individual_colony(data)
         sol_val      = region_props(col_id).Solidity;
     end
 
-    lagT_val  = colonies.lag_time(col_id);
+    appearanceT_val  = colonies.appearance_time(col_id);
     int_val   = colonies.timecourse_intensity_smoothed(end, col_id);
     size_val  = colonies.timecourse_size_smoothed(end, col_id);
     intS_val  = int_val ./ size_val;
@@ -109,7 +109,7 @@ function plot_individual_colony(data)
     
     % Add colony metrics
     text_lines = {
-        sprintf('Lag=%.1f', lagT_val)
+        sprintf('Appearance=%.1f', appearanceT_val)
         sprintf('Size=%.2f', size_val)
         sprintf('Area=%.1f', area_val)
         sprintf('Int=%.1f', int_val)

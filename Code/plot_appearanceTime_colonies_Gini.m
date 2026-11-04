@@ -1,14 +1,14 @@
 %% HeteroTyper Pipeline
-%  plot_lagTime_colonies_Gini  —  Violin + scatter of lag time per plate,
+%  plot_appearanceTime_colonies_Gini  —  Violin + scatter of appearance time per plate,
 %  grouped by sample time. X-axis shows bio+tech replicate labels read
 %  directly from ht.metadata (the full metadata table stored in ht).
 %
 %%  USAGE
 %  -----
-%    stats = plot_lagTime_colonies_Gini(ht, your_data_variable)
+%    stats = plot_appearanceTime_colonies_Gini(ht, your_data_variable)
 %
 %  Example:
-%    stats = plot_lagTime_colonies_Gini(ht, data_26C_050626)
+%    stats = plot_appearanceTime_colonies_Gini(ht, data_26C_050626)
 %
 %  On first call the function asks:
 %    A) Which metadata column = biological replicate  (e.g. Set)
@@ -19,7 +19,7 @@
 %  To re-select columns:
 %    ht = rmfield(ht, 'plate_labels');  then re-run.
 
-function stats = plot_lagTime_colonies_Gini(ht, raw_data)
+function stats = plot_appearanceTime_colonies_Gini(ht, raw_data)
 
     %% ----------------------------------------------------------------
     %  0.  Validate inputs
@@ -29,14 +29,17 @@ function stats = plot_lagTime_colonies_Gini(ht, raw_data)
     end
     if nargin < 2 || ~isstruct(raw_data) || ~isfield(raw_data, 'processed')
         error(['Second argument must be your raw data struct.\n' ...
-               'Usage: stats = plot_lagTime_colonies_Gini(ht, data_26C_050626)']);
+               'Usage: stats = plot_appearanceTime_colonies_Gini(ht, data_26C_050626)']);
     end
 
     p        = ht.params;
     labels   = ht.labels;
     n_groups = length(labels);
     incTime  = p.incTime;
-    max_lag  = p.max_lag;
+    % Gini origin for appearance times (hours since inoculation -> hours since imaging start)
+    gini_org = incTime;
+    if isfield(p, 'gini_appearance_origin'), gini_org = p.gini_appearance_origin; end
+    max_appearance  = p.max_appearance;
     out_dir  = p.out_dir;
     nr_plates = ht.qc.nr_plates;
 
@@ -61,10 +64,10 @@ function stats = plot_lagTime_colonies_Gini(ht, raw_data)
         is_default = ~isempty(regexp(first_lbl, '^(Plate|P)\d+$', 'once'));
         if ~is_default
             need_labels = false;
-            fprintf('[plot_lagTime_colonies_Gini] Using cached ht.plate_labels (e.g. "%s").\n', first_lbl);
+            fprintf('[plot_appearanceTime_colonies_Gini] Using cached ht.plate_labels (e.g. "%s").\n', first_lbl);
             fprintf('  To re-select: ht = rmfield(ht,''plate_labels''); then re-run.\n');
         else
-            fprintf('[plot_lagTime_colonies_Gini] Cached labels are defaults ("%s") — rebuilding from metadata.\n', first_lbl);
+            fprintf('[plot_appearanceTime_colonies_Gini] Cached labels are defaults ("%s") — rebuilding from metadata.\n', first_lbl);
         end
     end
 
@@ -72,16 +75,16 @@ function stats = plot_lagTime_colonies_Gini(ht, raw_data)
         % Load metadata: prefer ht.metadata (patched preprocess), else raw_data
         if isfield(ht, 'metadata') && istable(ht.metadata) && height(ht.metadata) > 0
             meta_tbl = ht.metadata;
-            fprintf('[plot_lagTime_colonies_Gini] Reading metadata from ht.metadata (%d rows, %d cols).\n', ...
+            fprintf('[plot_appearanceTime_colonies_Gini] Reading metadata from ht.metadata (%d rows, %d cols).\n', ...
                 height(meta_tbl), width(meta_tbl));
         elseif isfield(raw_data, 'metadata') && isfield(raw_data.metadata, 'original') && ...
                istable(raw_data.metadata.original) && height(raw_data.metadata.original) > 0
             meta_tbl = raw_data.metadata.original;
-            fprintf('[plot_lagTime_colonies_Gini] Reading metadata from raw_data.metadata.original (%d rows, %d cols).\n', ...
+            fprintf('[plot_appearanceTime_colonies_Gini] Reading metadata from raw_data.metadata.original (%d rows, %d cols).\n', ...
                 height(meta_tbl), width(meta_tbl));
         else
             meta_tbl = table();
-            fprintf('[plot_lagTime_colonies_Gini] WARNING: no metadata found — will use plate indices.\n');
+            fprintf('[plot_appearanceTime_colonies_Gini] WARNING: no metadata found — will use plate indices.\n');
         end
 
         ht.plate_labels = build_plate_labels_interactive(meta_tbl, nr_plates);
@@ -91,10 +94,10 @@ function stats = plot_lagTime_colonies_Gini(ht, raw_data)
     plate_labels = ht.plate_labels;   % {nr_plates x 1} cell of strings
 
     %% ----------------------------------------------------------------
-    %  2.  Per-plate lag-time cache
+    %  2.  Per-plate appearance-time cache
     %% ----------------------------------------------------------------
     if ~isfield(ht, 'per_plate') || isempty(fieldnames(ht.per_plate))
-        ht = build_per_plate_cache(ht, raw_data, incTime, max_lag);
+        ht = build_per_plate_cache(ht, raw_data, incTime, max_appearance);
         assignin('base', 'ht', ht);
     end
 
@@ -103,7 +106,7 @@ function stats = plot_lagTime_colonies_Gini(ht, raw_data)
     %% ----------------------------------------------------------------
     fig_w = 14;   fig_h = 11;
 
-    hfig = figure('Name','Lag time — colonies & Gini','Color','w', ...
+    hfig = figure('Name','Appearance time — colonies & Gini','Color','w', ...
                   'Units','inches','Position',[1 1 fig_w fig_h], ...
                   'PaperUnits','inches','PaperSize',[fig_w fig_h], ...
                   'PaperPosition',[0 0 fig_w fig_h]);
@@ -119,8 +122,8 @@ function stats = plot_lagTime_colonies_Gini(ht, raw_data)
     stats        = struct();
     group_colors = ht.colors;
     y_lo         = incTime;
-    y_hi         = max_lag + 6;
-    y_gini       = max_lag + 2.0;   % fixed y for all Gini labels
+    y_hi         = max_appearance + 6;
+    y_gini       = max_appearance + 2.0;   % fixed y for all Gini labels
 
     % Accumulators for pooled (across all groups) correlation
     pool_N    = [];   % colony counts across ALL plates
@@ -164,7 +167,7 @@ function stats = plot_lagTime_colonies_Gini(ht, raw_data)
         end
 
         % ---- Per-plate rendering ----
-        all_lag    = [];
+        all_appearance    = [];
         all_pos    = [];
         plate_N    = nan(n_plates, 1);
         plate_Gini = nan(n_plates, 1);
@@ -178,25 +181,25 @@ function stats = plot_lagTime_colonies_Gini(ht, raw_data)
             fld  = sprintf('plate_%d', pidx);
 
             if isfield(ht.per_plate, fld)
-                lag = ht.per_plate.(fld);
+                appearance = ht.per_plate.(fld);
             else
-                lag = [];
+                appearance = [];
             end
 
-            if isempty(lag)
+            if isempty(appearance)
                 plate_N(pi) = 0;
                 fprintf('  %s | %s (plate %d): no data\n', grp_label, tick_labels{pi}, pidx);
                 continue;
             end
 
-            n_col       = numel(lag);
+            n_col       = numel(appearance);
             plate_N(pi) = n_col;
 
             % violin
             if n_col > 5
                 try
-                    bw = max(0.4, std(lag) * 0.18);
-                    [f, yi] = ksdensity(lag, 'Bandwidth', bw, 'Support', [y_lo y_hi]);
+                    bw = max(0.4, std(appearance) * 0.18);
+                    [f, yi] = ksdensity(appearance, 'Bandwidth', bw, 'Support', [y_lo y_hi]);
                     f = f ./ max(f) * 0.38;
                     patch(ax, [pi-f, fliplr(pi+f)], [yi, fliplr(yi)], ...
                           violin_col, 'EdgeColor','none','FaceAlpha',0.45);
@@ -207,15 +210,15 @@ function stats = plot_lagTime_colonies_Gini(ht, raw_data)
 
             % scatter
             jx = pi + 0.06 * randn(n_col, 1);
-            scatter(ax, jx, lag, 7, dot_col, 'filled', 'MarkerFaceAlpha', 0.40);
+            scatter(ax, jx, appearance, 7, dot_col, 'filled', 'MarkerFaceAlpha', 0.40);
 
             % median line
-            line(ax, [pi-0.25 pi+0.25], [median(lag) median(lag)], ...
+            line(ax, [pi-0.25 pi+0.25], [median(appearance) median(appearance)], ...
                  'Color', violin_col*0.6, 'LineWidth', 2.0);
 
             % Gini label — fixed y, 30 deg, one per plate tick
             if n_col >= 3
-                G              = gini_coeff(lag);
+                G              = gini_coeff(appearance, gini_org);
                 plate_Gini(pi) = G;
 
                 fprintf('%s | %s: Gini=%.3f  N=%d\n', grp_label, tick_labels{pi}, G, n_col);
@@ -228,14 +231,14 @@ function stats = plot_lagTime_colonies_Gini(ht, raw_data)
                      'FontSize', 9, 'FontWeight', 'bold');
             end
 
-            all_lag = [all_lag; lag];              %#ok<AGROW>
+            all_appearance = [all_appearance; appearance];              %#ok<AGROW>
             all_pos = [all_pos; pi*ones(n_col,1)]; %#ok<AGROW>
 
         end % plate loop
 
         % Gini table
         T = table((1:n_plates)', tick_labels(:), plate_N, plate_Gini, ...
-                  'VariableNames',{'PlatePos','Label','N_colonies','Gini_lag'});
+                  'VariableNames',{'PlatePos','Label','N_colonies','Gini_appearance'});
         assignin('base', ['GiniTable_' fn], T);
 
         % Spearman corr(N, Gini) — per group
@@ -262,17 +265,17 @@ function stats = plot_lagTime_colonies_Gini(ht, raw_data)
 
         % Stats
         stats.(fn).label  = grp_label;
-        stats.(fn).lag    = all_lag;
+        stats.(fn).appearance    = all_appearance;
         stats.(fn).plate  = all_pos;
-        stats.(fn).N      = numel(all_lag);
-        stats.(fn).median = median(all_lag);
-        stats.(fn).iqr    = iqr(all_lag);
+        stats.(fn).N      = numel(all_appearance);
+        stats.(fn).median = median(all_appearance);
+        stats.(fn).iqr    = iqr(all_appearance);
 
         fprintf('%s:  N=%d  |  median=%.2f h  |  IQR=%.2f h\n', ...
             grp_label, stats.(fn).N, stats.(fn).median, stats.(fn).iqr);
 
         % Axes — title includes Spearman rho and p-value
-        ylabel(ax, 'Lag time (h)', 'FontSize', 14, 'FontWeight', 'bold');
+        ylabel(ax, 'Appearance time (h)', 'FontSize', 14, 'FontWeight', 'bold');
 
         % Build significance star string
         if isnan(pval)
@@ -382,7 +385,7 @@ function stats = plot_lagTime_colonies_Gini(ht, raw_data)
     %  6.  Save outputs
     %% ----------------------------------------------------------------
     ts = datestr(now, 'yyyymmdd_HHMMSS');
-    bn = sprintf('lagTime_colonies_Gini_%s', ts);
+    bn = sprintf('appearanceTime_colonies_Gini_%s', ts);
 
     save_fig(hfig, fullfile(out_dir, [bn '.fig']), 'fig');
     save_fig(hfig, fullfile(out_dir, [bn '.png']), 'png');
@@ -564,7 +567,7 @@ end
 %% ====================================================================
 %  LOCAL: build_per_plate_cache
 %% ====================================================================
-function ht = build_per_plate_cache(ht, raw_data, incTime, max_lag)
+function ht = build_per_plate_cache(ht, raw_data, incTime, max_appearance)
 
     nr_plates = ht.qc.nr_plates;
     min_col   = ht.params.min_col;
@@ -591,14 +594,14 @@ function ht = build_per_plate_cache(ht, raw_data, incTime, max_lag)
         end
 
         if ~isfield(proc,'colonies') || ~isfield(proc.colonies,'new') || ...
-           ~isfield(proc.colonies.new,'lag_time')
+           ~isfield(proc.colonies.new,'appearance_time')
             ht.per_plate.(fld) = [];  n_bad = n_bad+1;
-            fprintf('  Plate %3d: lag_time missing\n', i);  continue;
+            fprintf('  Plate %3d: appearance_time missing\n', i);  continue;
         end
 
-        lag_raw = proc.colonies.new.lag_time(:) + incTime;
-        lag_raw(lag_raw >= max_lag - cens_tol) = NaN;
-        n_valid = sum(~isnan(lag_raw));
+        appearance_raw = proc.colonies.new.appearance_time(:) + incTime;
+        appearance_raw(appearance_raw >= max_appearance - cens_tol) = NaN;
+        n_valid = sum(~isnan(appearance_raw));
 
         if n_valid < min_col || n_valid > max_col
             ht.per_plate.(fld) = [];  n_bad = n_bad+1;
@@ -606,10 +609,10 @@ function ht = build_per_plate_cache(ht, raw_data, incTime, max_lag)
             continue;
         end
 
-        lag = lag_raw(~isnan(lag_raw));
-        ht.per_plate.(fld) = lag;
+        appearance = appearance_raw(~isnan(appearance_raw));
+        ht.per_plate.(fld) = appearance;
         n_ok = n_ok+1;
-        fprintf('  Plate %3d: OK  n=%d  median=%.1f h\n', i, numel(lag), median(lag));
+        fprintf('  Plate %3d: OK  n=%d  median=%.1f h\n', i, numel(appearance), median(appearance));
     end
 
     fprintf('[build_per_plate_cache]  Done: %d OK, %d skipped\n\n', n_ok, n_bad);
@@ -639,7 +642,12 @@ end
 %% ====================================================================
 %  LOCAL: gini_coeff
 %% ====================================================================
-function G = gini_coeff(x)
+function G = gini_coeff(x, origin)
+    % Gini of (x - origin). For appearance times pass origin = incTime (see
+    % compute_gini in preprocess_pipeline_data.m for the reason).
+    if nargin < 2 || isempty(origin), origin = 0; end
+    x = x(:) - origin;
+    x(x < 0 & x > -1e-9) = 0;
     x = x(isfinite(x) & x >= 0);
     n = numel(x);
     if n < 2 || sum(x) == 0, G = NaN; return; end

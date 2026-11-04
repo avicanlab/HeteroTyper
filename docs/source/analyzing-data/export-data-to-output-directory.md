@@ -27,7 +27,7 @@ export_data_to_output_directory(data, ht);
 Colonies in Table 1 satisfy: `~isnan(grp.size)`, i.e. they passed the size threshold set
 in `preprocess_pipeline_data` (default 100 px) and were not `NaN`-masked for any other
 reason. This is identical to the population shown in `plot_combined_samples`. Censored
-lag-time entries are included as `NaN` in the `LagTime` column. Table 2 additionally
+appearance-time entries are included as `NaN` in the `AppearanceTime` column. Table 2 additionally
 requires `isfinite(grp.int_per_size)`.
 
 ## Output directory
@@ -41,7 +41,7 @@ output directory is not cluttered:
 
 | Item | Description |
 |---|---|
-| `Morphology_AllParameters_<timestamp>.xlsx` | Table 1 — all size-filtered colonies. Columns: `SampleGroup`, `Name`, `Folder`, `PlateNo`, `LagTime`, `FinalSize`, `Area`, `Intensity`, `Perimeter`, `Circularity`, `Eccentricity`, `Solidity`, `Centroid_X`, `Centroid_Y`. |
+| `Morphology_AllParameters_<timestamp>.xlsx` | Table 1 — all size-filtered colonies. Columns: `SampleGroup`, `Name`, `Folder`, `PlateNo`, `AppearanceTime`, `FinalSize`, `Area`, `Intensity`, `Perimeter`, `Circularity`, `Eccentricity`, `Solidity`, `Centroid_X`, `Centroid_Y`. |
 | `Morphology_AllParameters_IntPerSize_<timestamp>.xlsx` | Table 2 — subset with finite `IntPerSize`. Same columns as Table 1 plus `IntPerSize`. |
 | `allGroupsTable_<timestamp>.mat` | Single `.mat` file containing both tables as `allGroupsTable_Bright` and `allGroupsTable_Bright_2`. Also assigned to the MATLAB base workspace. |
 | `export_data_to_output_directory_<timestamp>.txt` | Log file — per-group colony counts and output file paths. |

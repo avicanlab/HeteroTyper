@@ -15,7 +15,7 @@ distribution.
 
 ## Requirements
 
-- MATLAB R2020a or later (`exportgraphics` required). Statistics and Machine Learning
+- MATLAB R2023b or later (`exportgraphics` required). Statistics and Machine Learning
   Toolbox (`kruskalwallis` required for Section 2).
 - `preprocess_pipeline_data(data);` must be run first to generate the `ht` struct.
 
@@ -41,7 +41,7 @@ On launch, two prompts are shown in sequence:
 - **Groups** → enter labels separated by spaces or commas (e.g. `3h 24h`), or type
   `ALL`.
 - **Features** → enter feature numbers (1–10) separated by commas, or type `ALL`.
-  Features: 1 Lag Time, 2 Final Size, 3 Area, 4 Intensity, 5 Mean Intensity, 6 Int /
+  Features: 1 Appearance Time, 2 Final Size, 3 Area, 4 Intensity, 5 Mean Intensity, 6 Int /
   Size, 7 Perimeter, 8 Circularity, 9 Eccentricity, 10 Solidity.
 
 ## Colony Filtering
@@ -88,5 +88,5 @@ plot_correlation_matrix(ht);
 |---|---|
 | Group skipped: "insufficient data for correlation" | Fewer than 3 colonies had finite values across all selected features for that group. Reduce the feature selection or check QC thresholds. |
 | KW / Dunn result is `NaN` for a feature | All selected groups had fewer than 3 finite values for that feature. The CSV row will contain `NA`. |
-| `exportgraphics` error | Requires MATLAB R2020a+. Use `print()` as a fallback on older versions. |
+| `exportgraphics` error | Requires MATLAB R2023b or later. Use `print()` as a fallback on older versions. |
 | `kruskalwallis` not found | Requires the Statistics and Machine Learning Toolbox. |

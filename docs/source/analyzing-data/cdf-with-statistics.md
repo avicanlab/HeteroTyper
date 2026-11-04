@@ -4,7 +4,7 @@
 
 ## Purpose
 
-Plots empirical survival functions (1 – CDF) of lag time across selected sample groups
+Plots empirical survival functions (1 – CDF) of appearance time across selected sample groups
 and computes a slope metric that quantifies how rapidly colonies exit the lag phase.
 Three figures are produced per run: a linear-scale survival plot, a log-scale survival
 plot (same values, log y-axis), and a single bar chart of mean slope. Pairwise
@@ -12,7 +12,7 @@ statistical tests (KS and log-rank) are printed to the terminal and saved to a l
 
 ## Requirements
 
-- MATLAB R2020a or later (`exportgraphics` required).
+- MATLAB R2023b or later (`exportgraphics` required).
 - Statistics and Machine Learning Toolbox (`kstest2` in MATLAB).
 - `preprocess_pipeline_data(data);` must be run first to generate the `ht` struct.
 
@@ -34,7 +34,7 @@ results = plot_CDF_with_statistics(ht);
 
 ## Colony filtering
 
-The script reads lag times directly from `ht.groups(g).lag_time`, which already
+The script reads appearance times directly from `ht.groups(g).appearance_time`, which already
 contains only QC-passing colonies from the preprocessor. No additional filtering is
 applied here. A colony is included if it passed all three criteria during
 preprocessing:
@@ -46,7 +46,7 @@ preprocessing:
 :::{note}
 Colony filtering is identical across `preprocess_pipeline_data`, `plot_combined_samples`,
 `plot_combined_samples_growth_curves`, and this script. All four scripts operate on the
-same validated colony set stored in `ht.groups(g).lag_time` and related fields.
+same validated colony set stored in `ht.groups(g).appearance_time` and related fields.
 :::
 
 ## Interactive Selection
@@ -67,7 +67,7 @@ and feature-list suffix:
 
 | Item | Description |
 |---|---|
-| **Figure 1 — Linear survival** | Survival `S = 1 – CDF` vs lag time (h) on a linear y-axis. One coloured line per group with circle markers. Legend shown top-right. |
+| **Figure 1 — Linear survival** | Survival `S = 1 – CDF` vs appearance time (h) on a linear y-axis. One coloured line per group with circle markers. Legend shown top-right. |
 | **Figure 2 — Log survival** | Identical data to Figure 1 displayed on a log y-axis (set via `YScale log`). Useful for identifying exponential exit kinetics. |
 | **Figure 3 — Slope bar chart** | A single bar chart showing mean `|ds/dt|` (fraction h⁻¹) per group. Bars are colored by group. |
 
@@ -88,7 +88,7 @@ All pairwise group comparisons are computed and printed to the terminal and log 
 
 | Item | Description |
 |---|---|
-| KS test (`kstest2`) | Two-sample Kolmogorov–Smirnov test on lag time distributions. Reports p-value. |
+| KS test (`kstest2`) | Two-sample Kolmogorov–Smirnov test on appearance time distributions. Reports p-value. |
 | Log-rank test | Log-rank test on survival curves. Reports p-value. Returns `NaN` if the `logrank` function is unavailable. |
 
 ## Output Struct
@@ -99,12 +99,12 @@ group:
 | Parameter | Feature |
 |---|---|
 | `results(g).group` | Group label string |
-| `results(g).x` | Unique sorted lag time points (h) |
+| `results(g).x` | Unique sorted appearance time points (h) |
 | `results(g).survival` | Survival values S at each time point |
 | `results(g).n` | Number of colonies |
-| `results(g).median` | Median lag time (h) |
-| `results(g).q25 / q75` | 25th and 75th percentile lag time (h) |
-| `results(g).min_lag / median_lag / max_lag` | Min, median, and max lag time (h) |
+| `results(g).median` | Median appearance time (h) |
+| `results(g).q25 / q75` | 25th and 75th percentile appearance time (h) |
+| `results(g).min_appearance / median_appearance / max_appearance` | Min, median, and max appearance time (h) |
 | `results(g).slope` | Struct with max and mean `\|dS/dt\|` |
 
 ## Saved Files
@@ -135,5 +135,5 @@ results = plot_CDF_with_statistics(ht);
 |---|---|
 | Group label not recognised | Labels are case-insensitive and must match exactly as listed in the selection menu. |
 | Log-rank p = `NaN` | The `logrank` function was not found. Ensure the Statistics and Machine Learning Toolbox is installed, or ignore this metric. |
-| Empty survival curve for a group | `ht.groups(g).lag_time` is empty, meaning no colonies passed QC for that group. Review `size_threshold` and `ecc_threshold` in `preprocess_pipeline_data`. |
-| `exportgraphics` error | Requires MATLAB R2020a+. Use `print()` as a fallback on older versions. |
+| Empty survival curve for a group | `ht.groups(g).appearance_time` is empty, meaning no colonies passed QC for that group. Review `size_threshold` and `ecc_threshold` in `preprocess_pipeline_data`. |
+| `exportgraphics` error | Requires MATLAB R2023b or later. Use `print()` as a fallback on older versions. |

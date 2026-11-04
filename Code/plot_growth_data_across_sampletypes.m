@@ -1,11 +1,11 @@
-%% 11.11.2025 - HeteroTyper Pipeline for Bright Plates 
+%% HeteroTyper Pipeline 
 
 function data = plot_growth_data_across_sampletypes(data)
 
     nr_plates = length(data.processed);
     
-    % Define maximum lag time
-    max_lag = 52;
+    % Define maximum appearance time
+    max_appearance = 52;
 
     % Define Room Temperature Incubation Time
     incTime = 20;
@@ -35,8 +35,8 @@ function data = plot_growth_data_across_sampletypes(data)
     % For these parameters to be defined, code must be run once.
     max_val = 4100; 
     xval            = [0:50:max_val]; % colony size bins 
-    xval2           = [incTime:0.5:max_lag]; % lag time bins 
-    xval3           = [0:1:max_lag]; % early DT bins 
+    xval2           = [incTime:0.5:max_appearance]; % appearance time bins 
+    xval3           = [0:1:max_appearance]; % early DT bins 
 
     
     %% split things by strain/site 
@@ -98,15 +98,15 @@ function data = plot_growth_data_across_sampletypes(data)
         end
     end
     
-    figure('Name','split distributions, lag time');
+    figure('Name','split distributions, appearance time');
     for i = 1:length(ix)
         ix_tmp = ix{i};
         for j = 1:length(ix_tmp)
-            lag_time = data.processed{ix_tmp(j)}.colonies.new.lag_time + incTime;
+            appearance_time = data.processed{ix_tmp(j)}.colonies.new.appearance_time + incTime;
             col_flag = data.processed{ix_tmp(j)}.colonies.region_props.flag_colony_ok;
     
             subplot(n_groups,max_plate,j+(i-1)*max_plate),...
-            histogram(lag_time(find(col_flag)),xval2,'FaceColor',colors(i,:),'EdgeColor','none','FaceAlpha',1);
+            histogram(appearance_time(find(col_flag)),xval2,'FaceColor',colors(i,:),'EdgeColor','none','FaceAlpha',1);
             axis([0 inf 0 inf]);
     
             %t = strcat('Pos:',num2str(ix_tmp(j)),'-',data.metadata.original.Time(ix_tmp(j)),'-(',num2str(length(find(col_flag))),')');
@@ -138,24 +138,24 @@ function data = plot_growth_data_across_sampletypes(data)
     end
     
     %%Scatter plots with 2D distributions
-    figure('Name','split distributions, col size vs lag time with density');
+    figure('Name','split distributions, col size vs appearance time with density');
     for i = 1:length(ix)
         ix_tmp = ix{i};
         for j = 1:length(ix_tmp)
-            lag_time = data.processed{ix_tmp(j)}.colonies.new.lag_time + incTime;
+            appearance_time = data.processed{ix_tmp(j)}.colonies.new.appearance_time + incTime;
             col_size = data.processed{ix_tmp(j)}.colonies.new.timecourse_size_smoothed(end,:);
             col_flag = data.processed{ix_tmp(j)}.colonies.region_props.flag_colony_ok;
     
             subplot(n_groups,max_plate,j+(i-1)*max_plate),...
-            dscatter(col_size(find(col_flag))',lag_time(find(col_flag)));
+            dscatter(col_size(find(col_flag))',appearance_time(find(col_flag)));
             m1 = median(col_size(find(col_flag))');
-            m2 = median(lag_time(find(col_flag)));
+            m2 = median(appearance_time(find(col_flag)));
     
             hold on;
             line([m1 m1],[0 m2],'Color','r');
             line([0 m1],[m2 m2],'Color','r');
     
-            histogram(lag_time(find(col_flag)),xval2,'FaceColor',colors(i,:),'EdgeColor','none','FaceAlpha',1);
+            histogram(appearance_time(find(col_flag)),xval2,'FaceColor',colors(i,:),'EdgeColor','none','FaceAlpha',1);
             axis([0 inf 0 inf]);
     
             %t = strcat('Pos:',num2str(ix_tmp(j)),'-',data.metadata.original.Time(ix_tmp(j)),'-(',num2str(length(find(col_flag))),')');
@@ -184,7 +184,7 @@ function data = plot_growth_data_across_sampletypes(data)
             line([m1 m1],[0 m2],'Color','r');
             line([0 m1],[m2 m2],'Color','r');
     
-            %histogram(lag_time(find(col_flag)),xval3,'FaceColor',colors(i,:),'EdgeColor','none','FaceAlpha',1);
+            %histogram(appearance_time(find(col_flag)),xval3,'FaceColor',colors(i,:),'EdgeColor','none','FaceAlpha',1);
             axis([0 inf 0 inf]);
     
             t = data.metadata.original.Time(ix_tmp(j));
@@ -194,24 +194,24 @@ function data = plot_growth_data_across_sampletypes(data)
         end
     end
     
-    figure('Name','split distributions, lag time vs early DT with density');
+    figure('Name','split distributions, appearance time vs early DT with density');
     for i = 1:length(ix)
         ix_tmp = ix{i};
         for j = 1:length(ix_tmp)
-            lag_time = data.processed{ix_tmp(j)}.colonies.new.lag_time + incTime;
+            appearance_time = data.processed{ix_tmp(j)}.colonies.new.appearance_time + incTime;
             earlyDT = data.processed{ix_tmp(j)}.colonies.new.early_doublingtime;
             col_flag = data.processed{ix_tmp(j)}.colonies.region_props.flag_colony_ok;
     
             subplot(n_groups,max_plate,j+(i-1)*max_plate),...
-            dscatter(lag_time(find(col_flag)),earlyDT(find(col_flag)));
-            m1 = median(lag_time(find(col_flag))');
+            dscatter(appearance_time(find(col_flag)),earlyDT(find(col_flag)));
+            m1 = median(appearance_time(find(col_flag))');
             m2 = median(earlyDT(find(col_flag)));
     
             hold on;
             line([m1 m1],[0 m2],'Color','r');
             line([0 m1],[m2 m2],'Color','r');
     
-            %histogram(lag_time(find(col_flag)),xval2,'FaceColor',colors(i,:),'EdgeColor','none','FaceAlpha',1);
+            %histogram(appearance_time(find(col_flag)),xval2,'FaceColor',colors(i,:),'EdgeColor','none','FaceAlpha',1);
             axis([0 inf 0 inf]);
     
             %t = strcat('Pos:',num2str(ix_tmp(j)),'-',data.metadata.original.Time(ix_tmp(j)),'-(',num2str(length(find(col_flag))),')');
@@ -223,24 +223,24 @@ function data = plot_growth_data_across_sampletypes(data)
     end
     
     
-    figure('Name','split distributions, col size vs lag time');
+    figure('Name','split distributions, col size vs appearance time');
     for i = 1:length(ix)
         ix_tmp = ix{i};
         for j = 1:length(ix_tmp)
-            lag_time = data.processed{ix_tmp(j)}.colonies.new.lag_time + incTime;
+            appearance_time = data.processed{ix_tmp(j)}.colonies.new.appearance_time + incTime;
             col_size = data.processed{ix_tmp(j)}.colonies.new.timecourse_size_smoothed(end,:);
             col_flag = data.processed{ix_tmp(j)}.colonies.region_props.flag_colony_ok;
     
             subplot(n_groups,max_plate,j+(i-1)*max_plate),...
-            plot(col_size(find(col_flag))',lag_time(find(col_flag)),'.k');
+            plot(col_size(find(col_flag))',appearance_time(find(col_flag)),'.k');
             m1 = median(col_size(find(col_flag))');
-            m2 = median(lag_time(find(col_flag)));
+            m2 = median(appearance_time(find(col_flag)));
     
             hold on;
             line([m1 m1],[0 m2],'Color','r');
             line([0 m1],[m2 m2],'Color','r');
     
-            %histogram(lag_time(find(col_flag)),xval2,'FaceColor',colors(i,:),'EdgeColor','none','FaceAlpha',1);
+            %histogram(appearance_time(find(col_flag)),xval2,'FaceColor',colors(i,:),'EdgeColor','none','FaceAlpha',1);
             axis([0 inf 0 inf]);
     
             %t = strcat('Pos:',num2str(ix_tmp(j)),'-',data.metadata.original.Time(ix_tmp(j)),'-(',num2str(length(find(col_flag))),')');
@@ -268,7 +268,7 @@ function data = plot_growth_data_across_sampletypes(data)
             line([m1 m1],[0 m2],'Color','r');
             line([0 m1],[m2 m2],'Color','r');
     
-            %histogram(lag_time(find(col_flag)),xval2,'FaceColor',colors(i,:),'EdgeColor','none','FaceAlpha',1);
+            %histogram(appearance_time(find(col_flag)),xval2,'FaceColor',colors(i,:),'EdgeColor','none','FaceAlpha',1);
             axis([0 inf 0 inf]);
     
             %t = strcat('Pos:',num2str(ix_tmp(j)),'-',data.metadata.original.Time(ix_tmp(j)),'-(',num2str(length(find(col_flag))),')');
@@ -279,24 +279,24 @@ function data = plot_growth_data_across_sampletypes(data)
         end
     end
     
-    figure('Name','split distributions, lag time vs early DT');
+    figure('Name','split distributions, appearance time vs early DT');
     for i = 1:length(ix)
         ix_tmp = ix{i};
         for j = 1:length(ix_tmp)
-            lag_time = data.processed{ix_tmp(j)}.colonies.new.lag_time + incTime;
+            appearance_time = data.processed{ix_tmp(j)}.colonies.new.appearance_time + incTime;
             earlyDT = data.processed{ix_tmp(j)}.colonies.new.early_doublingtime; 
             col_flag = data.processed{ix_tmp(j)}.colonies.region_props.flag_colony_ok;
     
             subplot(n_groups,max_plate,j+(i-1)*max_plate),...
-            plot(lag_time(find(col_flag)),earlyDT(find(col_flag)),'.k');
-            m1 = median(lag_time(find(col_flag))');
+            plot(appearance_time(find(col_flag)),earlyDT(find(col_flag)),'.k');
+            m1 = median(appearance_time(find(col_flag))');
             m2 = median(earlyDT(find(col_flag)));
     
             hold on;
             line([m1 m1],[0 m2],'Color','r');
             line([0 m1],[m2 m2],'Color','r');
     
-            % histogram(lag_time(find(col_flag)),xval2,'FaceColor',colors(i,:),'EdgeColor','none','FaceAlpha',1);
+            % histogram(appearance_time(find(col_flag)),xval2,'FaceColor',colors(i,:),'EdgeColor','none','FaceAlpha',1);
             axis([0 inf 0 inf]);
     
             %t = strcat('Pos:',num2str(ix_tmp(j)),'-',data.metadata.original.Time(ix_tmp(j)),'-(',num2str(length(find(col_flag))),')');
@@ -315,37 +315,37 @@ function data = plot_growth_data_across_sampletypes(data)
         ix_tmp = ix{i};
     
         median_size_tmp = [];
-        median_lag_tmp = [];
+        median_appearance_tmp = [];
         median_earlyDT_tmp = [];
         col_nr_tmp = [];
         for j = 1:length(ix_tmp)
-            lag_time = data.processed{ix_tmp(j)}.colonies.new.lag_time + incTime;
+            appearance_time = data.processed{ix_tmp(j)}.colonies.new.appearance_time + incTime;
             col_size = data.processed{ix_tmp(j)}.colonies.new.timecourse_size_smoothed(end,:);
             early_DT = data.processed{ix_tmp(j)}.colonies.new.early_doublingtime;   
             col_flag = data.processed{ix_tmp(j)}.colonies.region_props.flag_colony_ok;
     
             median_size_tmp(j) = median(col_size(find(col_flag)));
-            median_lag_tmp(j) = median(lag_time(find(col_flag)));
+            median_appearance_tmp(j) = median(appearance_time(find(col_flag)));
             median_earlyDT_tmp(j) = median(early_DT(find(col_flag)));  
             col_nr_tmp(j) = length(col_flag);
         end
         median_size{i} = median_size_tmp;
-        median_lagtime{i} = median_lag_tmp;
+        median_appearancetime{i} = median_appearance_tmp;
         median_earlyDT{i} = median_earlyDT_tmp;
         col_nr{i} = col_nr_tmp;
     end
     
-    figure('Name','size and lag time distr comparison');
+    figure('Name','size and appearance time distr comparison');
     for i = 1:length(ix)
         ix_tmp = ix{i};
         for j = 1:length(ix_tmp)
-            lag_time = data.processed{ix_tmp(j)}.colonies.new.lag_time + incTime;
+            appearance_time = data.processed{ix_tmp(j)}.colonies.new.appearance_time + incTime;
             col_size = data.processed{ix_tmp(j)}.colonies.new.timecourse_size_smoothed(end,:);
             early_DT = data.processed{ix_tmp(j)}.colonies.new.early_doublingtime;  
             col_flag = data.processed{ix_tmp(j)}.colonies.region_props.flag_colony_ok;
     
             [N ,plot_edges,~] = histcounts_clean(col_size(find(col_flag)),xval);
-            [N2 ,plot_edges2,~] = histcounts_clean(lag_time(find(col_flag)),xval2);
+            [N2 ,plot_edges2,~] = histcounts_clean(appearance_time(find(col_flag)),xval2);
             [N3 ,plot_edges3,~] = histcounts_clean(early_DT(find(col_flag)),xval3);
     
     
@@ -363,7 +363,7 @@ function data = plot_growth_data_across_sampletypes(data)
             plot(plot_edges2,N2,'-k','Color',colors(i,:));
             hold on;
             axis([0 inf 0 inf]);
-            line([median(lag_time(find(col_flag))) median(lag_time(find(col_flag)))],[0 max(N2)],'Color','b','LineStyle','--');
+            line([median(appearance_time(find(col_flag))) median(appearance_time(find(col_flag)))],[0 max(N2)],'Color','b','LineStyle','--');
     
             subplot(n_groups,3,3+(i-1)*3),...
             plot(plot_edges3,N3,'-k','Color',colors(i,:));
@@ -380,7 +380,7 @@ function data = plot_growth_data_across_sampletypes(data)
     figure('Name','extracted params-median');
     for i = 1:length(median_size)
         median_size_tmp = median_size{i};
-        median_lag_tmp = median_lagtime{i};
+        median_appearance_tmp = median_appearancetime{i};
         median_earlyDT_tmp = median_earlyDT{i};
     
         col_nr_tmp = col_nr{i};
@@ -393,7 +393,7 @@ function data = plot_growth_data_across_sampletypes(data)
             hold on;
     
             subplot(1,4,2),...
-            plot(i+x_wiggle,median_lag_tmp,'ok','Color',colors(i,:));
+            plot(i+x_wiggle,median_appearance_tmp,'ok','Color',colors(i,:));
             hold on;
     
             subplot(1,4,3),...
@@ -414,13 +414,13 @@ function data = plot_growth_data_across_sampletypes(data)
     subplot(1,4,2),...
     set(gca,'XTick',[1:5],'XTickLabel',labels_type);
     xtickangle(-45);
-    ylabel('median lag time [h]');
-    axis([0.5 n_groups+0.5 0 max_lag]);
+    ylabel('median appearance time [h]');
+    axis([0.5 n_groups+0.5 0 max_appearance]);
     subplot(1,4,3),...
     set(gca,'XTick',[1:5],'XTickLabel',labels_type);
     xtickangle(-45);
     ylabel('early DT [h]');
-    axis([0.5 n_groups+0.5 0 max_lag]);
+    axis([0.5 n_groups+0.5 0 max_appearance]);
     subplot(1,4,4),...
     set(gca,'XTick',[1:5],'XTickLabel',labels_type);
     xtickangle(-45);
@@ -433,10 +433,10 @@ function data = plot_growth_data_across_sampletypes(data)
     [~,p(1,3)] = ttest2(median_size{3},median_size{3});
     [~,p(1,4)] = ttest2(median_size{4},median_size{4});
     
-    [~,p(2,1)] = ttest2(median_lagtime{1},median_lagtime{1});
-    [~,p(2,2)] = ttest2(median_lagtime{2},median_lagtime{2});
-    [~,p(2,3)] = ttest2(median_lagtime{3},median_lagtime{3});
-    [~,p(2,4)] = ttest2(median_lagtime{4},median_lagtime{4});
+    [~,p(2,1)] = ttest2(median_appearancetime{1},median_appearancetime{1});
+    [~,p(2,2)] = ttest2(median_appearancetime{2},median_appearancetime{2});
+    [~,p(2,3)] = ttest2(median_appearancetime{3},median_appearancetime{3});
+    [~,p(2,4)] = ttest2(median_appearancetime{4},median_appearancetime{4});
     
     [~,p(3,1)] = ttest2(col_nr{1},col_nr{1});
     [~,p(3,2)] = ttest2(col_nr{2},col_nr{2});
@@ -450,13 +450,13 @@ function data = plot_growth_data_across_sampletypes(data)
     
     %% 
     data.across_sample_types.median_size = median_size;
-    data.across_sample_types.median_lagtime = median_lagtime;
+    data.across_sample_types.median_appearancetime = median_appearancetime;
     data.across_sample_types.median_earlyDT = median_earlyDT;
     data.across_sample_types.col_nr = col_nr;
     data.across_sample_types.sample_types = labels_type;
     
     data.across_sample_types.p_values = p;
     data.across_sample_types.p_values_columns = {'1:3h','2:7h','3:24h','4:48h'};
-    data.across_sample_types.p_values_rows = {'1:median size','2:median lag time','3:colony number','4:median early DT'};
+    data.across_sample_types.p_values_rows = {'1:median size','2:median appearance time','3:colony number','4:median early DT'};
 
 end

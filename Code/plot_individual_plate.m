@@ -1,9 +1,9 @@
-%% 11.11.2025 - HeteroTyper Pipeline for Bright Plates
+%% HeteroTyper Pipeline
 
 function plot_individual_plate(data)
 
-    % Define maximum lag time
-    max_lag = 52;
+    % Define maximum appearance time
+    max_appearance = 52;
 
     % Define Room Temperature Incubation Time
     incTime = 20;
@@ -17,7 +17,7 @@ function plot_individual_plate(data)
     end
     
     % color-mode
-    color_mode = inputdlg('color by (0) segmentation, (1) lag-time, (2), col size?');
+    color_mode = inputdlg('color by (0) segmentation, (1) appearance-time, (2), col size?');
     color_mode = str2num(color_mode{1});
     
     % load mask
@@ -48,17 +48,17 @@ function plot_individual_plate(data)
     elseif(color_mode == 1)
         mask_bin = zeros(size(mask_clean));
         for i = 1:length(flag_col)
-            lag_time = data.processed{plate_id}.colonies.new.lag_time(flag_col(i)) + incTime;
-            mask_bin(find(mask_clean == flag_col(i))) = lag_time;
+            appearance_time = data.processed{plate_id}.colonies.new.appearance_time(flag_col(i)) + incTime;
+            mask_bin(find(mask_clean == flag_col(i))) = appearance_time;
             
-            feat_ratio(flag_col(i),1) = lag_time./max_lag;
+            feat_ratio(flag_col(i),1) = appearance_time./max_appearance;
             
         end
         imshow(mask_bin);
-        c = colormap(parula(max_lag-1));
+        c = colormap(parula(max_appearance-1));
         c = [0 0 0;c];
         colormap(c);
-        caxis([0 max_lag]);
+        caxis([0 max_appearance]);
         colorbar('eastoutside');
         colorrange_nr = size(c,1);
         colorrange = [0:1/(colorrange_nr-1):1];
@@ -126,7 +126,7 @@ function plot_individual_plate(data)
             end
         end
         subplot(1,3,3),...
-        axis([0 max_lag 0 max_val]);
+        axis([0 max_appearance 0 max_val]);
         xlabel('time [h]');
         ylabel('colony size [px]');
         

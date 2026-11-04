@@ -1,4 +1,4 @@
-%% HeteroTyper Pipeline for Bright Plates
+%% HeteroTyper Pipeline
 % Plots doubling time histograms per selected sample group.
 % Requires preprocess_pipeline_data(data) to have been run first.
 %
