@@ -1,4 +1,4 @@
-%% HeteroTyper Pipeline for Bright Plates
+%% HeteroTyper Pipeline
 % Plots pairwise Kolmogorov-Smirnov (D) statistics and 90th-percentile
 % quantile differences for selected sample groups and features.
 %
@@ -8,10 +8,16 @@
 % Output:
 %   - Figure 1 : KS statistic D  (x-axis fixed 0–1, step 0.5)
 %   - Figure 2 : Quantile difference Q90  (x-axis auto-scaled per feature)
-%   - .txt log file mirroring all terminal output
-%   - .xlsx file with all numeric values used in the figures
+%                Both figures annotate each bar with significance stars
+%                (* p<0.05, ** p<0.01, *** p<0.001) from the two-sample
+%                KS test p-value (ht.pairwise.KS_p_fdr, Benjamini-Hochberg
+%                FDR-corrected per feature). No mark = not significant.
+%   - .txt log file mirroring all terminal output, incl. KS p / p_FDR
+%   - .xlsx file with all numeric values used in the figures, plus
+%     KS_p_FDR and Significance sheets
 %
-% Requires preprocess_pipeline_data(data) to have been run first.
+% Requires preprocess_pipeline_data(data) to have been run first
+% (needs ht.pairwise.KS_p / KS_p_fdr — re-run it if these are missing).
 %
 %% USAGE:
 %   plot_KS_quantile_statistics(ht)
@@ -81,6 +87,20 @@ function plot_KS_quantile_statistics(ht)
     Q90         = pw.Q90(keep, sel_feats);
     n_pairs     = sum(keep);
 
+    % KS-test p-value paired with KS_D (added by preprocess_pipeline_data).
+    % Falls back to all-NaN (stars silently omitted) against an older ht
+    % struct that predates this field, rather than erroring.
+    has_ks_p = isfield(pw,'KS_p') && isfield(pw,'KS_p_fdr');
+    if has_ks_p
+        KS_P     = pw.KS_p(keep, sel_feats);
+        KS_Pfdr  = pw.KS_p_fdr(keep, sel_feats);
+    else
+        KS_P     = nan(n_pairs, n_feats);
+        KS_Pfdr  = nan(n_pairs, n_feats);
+        warning(['ht.pairwise.KS_p / KS_p_fdr not found — re-run preprocess_pipeline_data ' ...
+                 'to add significance stars. Plotting without them.']);
+    end
+
     if n_pairs == 0
         error('No pairs found for the selected groups. Select at least 2 groups.');
     end
@@ -88,17 +108,23 @@ function plot_KS_quantile_statistics(ht)
     % ------------------------------------------------------------------
     %  Print values to log
     % ------------------------------------------------------------------
-    ht_fprintf(HT_FLOG, '%-28s  %-22s  %8s  %12s\n', ...
-               'Pair','Feature','KS D','Q90 diff');
-    ht_fprintf(HT_FLOG, '%s\n', repmat('-',1,76));
+    ht_fprintf(HT_FLOG, '%-28s  %-22s  %8s  %12s  %10s %4s  %10s %4s\n', ...
+               'Pair','Feature','KS D','Q90 diff','KS p','sig','KS p_FDR','sig');
+    ht_fprintf(HT_FLOG, '%s\n', repmat('-',1,110));
     for f = 1:n_feats
         for pi = 1:n_pairs
             if isnan(KS_D(pi,f)), continue; end
-            ht_fprintf(HT_FLOG, '%-28s  %-22s  %8.4f  %12.4f\n', ...
-                pair_labels{pi}, feat_names{f}, KS_D(pi,f), Q90(pi,f));
+            ht_fprintf(HT_FLOG, '%-28s  %-22s  %8.4f  %12.4f  %10s %4s  %10s %4s\n', ...
+                pair_labels{pi}, feat_names{f}, KS_D(pi,f), Q90(pi,f), ...
+                format_pval(KS_P(pi,f)), sig_stars(KS_P(pi,f)), ...
+                format_pval(KS_Pfdr(pi,f)), sig_stars(KS_Pfdr(pi,f)));
         end
     end
     ht_fprintf(HT_FLOG, '\n');
+    if has_ks_p
+        ht_fprintf(HT_FLOG, 'Significance: two-sample KS test (kstest2), FDR-corrected per feature.\n');
+        ht_fprintf(HT_FLOG, '  *** p<0.001   ** p<0.01   * p<0.05   ns = not significant\n\n');
+    end
 
     % ------------------------------------------------------------------
     %  Figure layout
@@ -143,6 +169,12 @@ function plot_KS_quantile_statistics(ht)
             if isnan(KS_D(pi,f)), continue; end
             barh(ax, pi, KS_D(pi,f), 0.65, ...
                  'FaceColor',gray_palette(f,:), 'EdgeColor','none');
+            star_str = star_label(KS_Pfdr(pi,f));
+            if ~isempty(star_str)
+                text(ax, min(KS_D(pi,f) + 0.02, 0.97), pi, star_str, ...
+                     'FontSize',9,'FontWeight','bold', ...
+                     'HorizontalAlignment','left','VerticalAlignment','middle');
+            end
         end
 
         xlim(ax,[0 1]);
@@ -167,6 +199,12 @@ function plot_KS_quantile_statistics(ht)
                'String','Kolmogorov-Smirnov (D)', ...
                'HorizontalAlignment','center','VerticalAlignment','middle', ...
                'FontSize',12,'FontWeight','bold','EdgeColor','none');
+    if has_ks_p
+        annotation(hfig_ks,'textbox',[0, ann_h_ks, 1, 0.20/fig_h], ...
+                   'String','* p<0.05   ** p<0.01   *** p<0.001  (two-sample KS test, FDR-corrected)', ...
+                   'HorizontalAlignment','center','VerticalAlignment','middle', ...
+                   'FontSize',8,'FontAngle','italic','EdgeColor','none');
+    end
 
     set(hfig_ks,'Visible','on'); drawnow;
 
@@ -184,7 +222,7 @@ function plot_KS_quantile_statistics(ht)
         left   = (margin_l + (f-1)*(panel_w+gap_x)) / fig_w;
         bottom = margin_b / fig_h;
         ax = axes('Position',[left, bottom, panel_w/fig_w, panel_h/fig_h], ...
-                  'Parent',hfig_q); %#ok<LAXES>
+                  'Parent',hfig_q);
         hold(ax,'on');
 
         vals = Q90(:,f);
@@ -208,6 +246,22 @@ function plot_KS_quantile_statistics(ht)
             xticks(ax, tick_vals);
             xticklabels(ax, arrayfun(@(v) sprintf('%d', round(v)), tick_vals, ...
                             'UniformOutput', false));
+
+            star_offset = 0.03 * abs_max_int;
+            for pi = 1:n_pairs
+                if isnan(vals(pi)), continue; end
+                star_str = star_label(KS_Pfdr(pi,f));
+                if isempty(star_str), continue; end
+                if vals(pi) >= 0
+                    text(ax, vals(pi) + star_offset, pi, star_str, ...
+                         'FontSize',9,'FontWeight','bold', ...
+                         'HorizontalAlignment','left','VerticalAlignment','middle');
+                else
+                    text(ax, vals(pi) - star_offset, pi, star_str, ...
+                         'FontSize',9,'FontWeight','bold', ...
+                         'HorizontalAlignment','right','VerticalAlignment','middle');
+                end
+            end
         end
         xline(ax,0,'-','Color',[0.4 0.4 0.4],'LineWidth',0.8);
 
@@ -230,6 +284,12 @@ function plot_KS_quantile_statistics(ht)
                'String','Quantile Difference (Q90)', ...
                'HorizontalAlignment','center','VerticalAlignment','middle', ...
                'FontSize',12,'FontWeight','bold','EdgeColor','none');
+    if has_ks_p
+        annotation(hfig_q,'textbox',[0, ann_h_q, 1, 0.20/fig_h], ...
+                   'String','* p<0.05   ** p<0.01   *** p<0.001  (two-sample KS test, FDR-corrected)', ...
+                   'HorizontalAlignment','center','VerticalAlignment','middle', ...
+                   'FontSize',8,'FontAngle','italic','EdgeColor','none');
+    end
 
     set(hfig_q,'Visible','on'); drawnow;
 
@@ -243,11 +303,11 @@ function plot_KS_quantile_statistics(ht)
     save_fig(HT_FLOG, hfig_q,  out_dir, base_q);
 
     % ------------------------------------------------------------------
-    %  Export .xlsx  (two sheets: KS_D and Q90_diff)
+    %  Export .xlsx  (KS_D, Q90_diff, KS_p_FDR, Significance sheets)
     % ------------------------------------------------------------------
     xlsx_path = fullfile(out_dir, ...
         sprintf('KS_Quantile_Statistics_%s_%s.xlsx', grp_str, timestamp_log));
-    export_xlsx(HT_FLOG, xlsx_path, pair_labels, feat_names, KS_D, Q90);
+    export_xlsx(HT_FLOG, xlsx_path, pair_labels, feat_names, KS_D, Q90, KS_Pfdr);
 
     % ------------------------------------------------------------------
     %  Close log
@@ -372,30 +432,43 @@ end
 
 %% ================================================================
 %  LOCAL: export_xlsx
-%  Writes KS_D and Q90 tables to two sheets in an .xlsx file.
+%  Writes KS_D, Q90, KS p_FDR and Significance tables to four sheets
+%  in an .xlsx file. KS_Pfdr may be all-NaN (older ht struct without
+%  KS_p/KS_p_fdr) — the p_FDR/Significance sheets still write in that
+%  case, just filled with "NA".
 % ================================================================
-function export_xlsx(HT_FLOG, xlsx_path, pair_labels, feat_names, KS_D, Q90)
+function export_xlsx(HT_FLOG, xlsx_path, pair_labels, feat_names, KS_D, Q90, KS_Pfdr)
     n_pairs = length(pair_labels);
     n_feats = length(feat_names);
     header  = [{'Pair'}, feat_names];
 
-    ks_table = cell(n_pairs+1, n_feats+1);
-    q_table  = cell(n_pairs+1, n_feats+1);
-    ks_table(1,:) = header;
-    q_table(1,:)  = header;
+    ks_table  = cell(n_pairs+1, n_feats+1);
+    q_table   = cell(n_pairs+1, n_feats+1);
+    p_table   = cell(n_pairs+1, n_feats+1);
+    sig_table = cell(n_pairs+1, n_feats+1);
+    ks_table(1,:)  = header;
+    q_table(1,:)   = header;
+    p_table(1,:)   = header;
+    sig_table(1,:) = header;
 
     for r = 1:n_pairs
-        ks_table{r+1,1} = pair_labels{r};
-        q_table{r+1,1}  = pair_labels{r};
+        ks_table{r+1,1}  = pair_labels{r};
+        q_table{r+1,1}   = pair_labels{r};
+        p_table{r+1,1}   = pair_labels{r};
+        sig_table{r+1,1} = pair_labels{r};
         for c = 1:n_feats
-            ks_table{r+1,c+1} = KS_D(r,c);
-            q_table{r+1,c+1}  = Q90(r,c);
+            ks_table{r+1,c+1}  = KS_D(r,c);
+            q_table{r+1,c+1}   = Q90(r,c);
+            p_table{r+1,c+1}   = format_pval(KS_Pfdr(r,c));
+            sig_table{r+1,c+1} = strtrim(sig_stars(KS_Pfdr(r,c)));
         end
     end
 
     try
-        writecell(ks_table, xlsx_path, 'Sheet','KS_D');
-        writecell(q_table,  xlsx_path, 'Sheet','Q90_diff');
+        writecell(ks_table,  xlsx_path, 'Sheet','KS_D');
+        writecell(q_table,   xlsx_path, 'Sheet','Q90_diff');
+        writecell(p_table,   xlsx_path, 'Sheet','KS_p_FDR');
+        writecell(sig_table, xlsx_path, 'Sheet','Significance');
         ht_fprintf(HT_FLOG, 'Excel saved: %s\n', xlsx_path);
     catch ME
         ht_fprintf(HT_FLOG, 'WARNING: Could not save xlsx: %s\n', ME.message);
@@ -422,5 +495,52 @@ function ht_fprintf(HT_FLOG, varargin)
     fprintf(varargin{:});
     if ~isempty(HT_FLOG) && HT_FLOG ~= -1
         fprintf(HT_FLOG, varargin{:});
+    end
+end
+
+
+%% ================================================================
+%  LOCAL: sig_stars
+%  Significance stars for a p-value, padded to 3 chars for aligned
+%  table columns. Returns 'NA ' for NaN (comparison never run, or no
+%  KS_p_fdr field available on an older ht struct).
+% ================================================================
+function s = sig_stars(pval)
+    if isnan(pval),      s = 'NA ';
+    elseif pval < 0.001, s = '***';
+    elseif pval < 0.01,  s = '** ';
+    elseif pval < 0.05,  s = '*  ';
+    else,                s = 'ns ';
+    end
+end
+
+
+%% ================================================================
+%  LOCAL: format_pval
+%  Text display for a p-value. kstest2 can legitimately underflow to
+%  exact 0.0 in double precision for large n / a strong distributional
+%  difference — shown as "<1e-300" instead of a misleading literal 0.
+% ================================================================
+function s = format_pval(p)
+    if isnan(p)
+        s = 'NA';
+    elseif p == 0
+        s = '<1e-300';
+    else
+        s = sprintf('%.4g', p);
+    end
+end
+
+
+%% ================================================================
+%  LOCAL: star_label
+%  Trimmed stars for on-plot text — empty string (no annotation) for
+%  non-significant or missing p-values, so bars only carry a mark
+%  when there's something to flag.
+% ================================================================
+function s = star_label(pval)
+    s = strtrim(sig_stars(pval));
+    if strcmp(s,'ns') || strcmp(s,'NA')
+        s = '';
     end
 end

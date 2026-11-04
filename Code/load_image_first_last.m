@@ -1,4 +1,4 @@
-%% 11.11.2025 - HeteroTyper Pipeline for Bright Plates
+%% HeteroTyper Pipeline
 
 % load first and last image from each image stack
 

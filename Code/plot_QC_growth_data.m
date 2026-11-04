@@ -3,7 +3,7 @@
 %%  PURPOSE
 %  -------
 %  Four per-plate QC figures for every plate that has growth_quant == true.
-%  All per-plate data (time vectors, size timecourses, lag times, early
+%  All per-plate data (time vectors, size timecourses, appearance times, early
 %  doubling times, valid-colony flags) are read directly from ht.qc —
 %  no access to the raw data struct is needed.
 %
@@ -69,8 +69,8 @@ function plot_QC_growth_data(ht)
     %  Bin edges — from ht (no recomputation)
     % =========================================================
     xval  = 0 : 100 : ht.xbins.size_upper;            % colony size
-    xval2 = p.incTime : 0.5 : p.max_lag;              % lag time
-    xval3 = 0 : 0.5 : p.max_lag;                      % early doubling time
+    xval2 = p.incTime : 0.5 : p.max_appearance;              % appearance time
+    xval3 = 0 : 0.5 : p.max_appearance;                      % early doubling time
 
     % =========================================================
     %  Auto grid layout — most square grid fitting all plates
@@ -125,7 +125,7 @@ function plot_QC_growth_data(ht)
         if ~isempty(t_vec) && ~isempty(tc_mat)
             n_valid = size(tc_mat, 2);
             plot(ax, t_vec, tc_mat, '-', 'Color', [fill_col, 0.45], 'LineWidth', 0.5);
-            xlim(ax, [0, p.max_lag]);
+            xlim(ax, [0, p.max_appearance]);
             ylim(ax, [0, inf]);
         end
 
@@ -218,11 +218,11 @@ function plot_QC_growth_data(ht)
     tlog('  Saved: QC_size_dist_%s\n\n', timestamp);
 
     % =========================================================
-    %  PLOT 3 — Lag time distributions
+    %  PLOT 3 — Appearance time distributions
     % =========================================================
-    tlog('--- Plot 3: Lag time distributions ---\n');
+    tlog('--- Plot 3: Appearance time distributions ---\n');
 
-    fig3 = figure('Name', sprintf('QC lag time distributions (%d plates)', n_plates), ...
+    fig3 = figure('Name', sprintf('QC appearance time distributions (%d plates)', n_plates), ...
                   'Units', 'pixels', ...
                   'Position', [screen_w*0.04, screen_h*0.04, ...
                                screen_w*fig_scale, screen_h*fig_scale], ...
@@ -230,7 +230,7 @@ function plot_QC_growth_data(ht)
 
     for k = 1:n_plates
         i        = ix_growth(k);
-        lag_k    = qc.plate_lag{i};
+        appearance_k    = qc.plate_appearance{i};
         g_idx    = plate_group(i);
         fill_col = group_color(g_idx, ht.colors);
         line_col = fill_col * 0.6;
@@ -239,23 +239,23 @@ function plot_QC_growth_data(ht)
         hold(ax, 'on');
 
         n_valid = 0;
-        if ~isempty(lag_k)
-            lag_finite = lag_k(isfinite(lag_k));
-            n_valid    = length(lag_finite);
+        if ~isempty(appearance_k)
+            appearance_finite = appearance_k(isfinite(appearance_k));
+            n_valid    = length(appearance_finite);
 
             if n_valid > 0
-                [N_counts, edges] = histcounts(lag_finite, xval2);
+                [N_counts, edges] = histcounts(appearance_finite, xval2);
                 plot_histogram(ax, edges, N_counts, fill_col, line_col);
 
-                med_val = median(lag_finite);
+                med_val = median(appearance_finite);
                 y_top   = max([N_counts, 1]);
                 line(ax, [med_val med_val], [0, y_top], ...
                      'Color', 'r', 'LineWidth', 1.5);
-                xlim(ax, [p.incTime, p.max_lag]);
+                xlim(ax, [p.incTime, p.max_appearance]);
                 ylim(ax, [0, max(1, ceil(y_top * 1.1))]);
 
-                tlog('  Plate %2d: n=%d  lag=[%.1f, %.1f]  median=%.1f\n', ...
-                     i, n_valid, min(lag_finite), max(lag_finite), med_val);
+                tlog('  Plate %2d: n=%d  appearance=[%.1f, %.1f]  median=%.1f\n', ...
+                     i, n_valid, min(appearance_finite), max(appearance_finite), med_val);
             end
         end
 
@@ -265,13 +265,13 @@ function plot_QC_growth_data(ht)
 
         plate_title(ax, qc, i);
         set(ax, 'FontSize', 5);
-        xlabel(ax, 'Lag time (h)', 'FontSize', 4);
+        xlabel(ax, 'Appearance time (h)', 'FontSize', 4);
         ylabel(ax, 'Count', 'FontSize', 4);
     end
     blank_unused(n_plates, n_rows_grid, n_cols_grid);
 
-    save_figure(fig3, out_dir, sprintf('QC_lag_time_dist_%s', timestamp));
-    tlog('  Saved: QC_lag_time_dist_%s\n\n', timestamp);
+    save_figure(fig3, out_dir, sprintf('QC_appearance_time_dist_%s', timestamp));
+    tlog('  Saved: QC_appearance_time_dist_%s\n\n', timestamp);
 
     % =========================================================
     %  PLOT 4 — Early doubling time distributions
@@ -307,7 +307,7 @@ function plot_QC_growth_data(ht)
                 y_top   = max([N_counts, 1]);
                 line(ax, [med_val med_val], [0, y_top], ...
                      'Color', 'r', 'LineWidth', 1.5);
-                xlim(ax, [0, p.max_lag]);
+                xlim(ax, [0, p.max_appearance]);
                 ylim(ax, [0, max(1, ceil(y_top * 1.1))]);
 
                 tlog('  Plate %2d: n=%d  early_DT=[%.1f, %.1f]  median=%.1f\n', ...

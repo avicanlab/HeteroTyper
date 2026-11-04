@@ -1,4 +1,4 @@
-%% 11.11.2025 - HeteroTyper Pipeline for Bright Plates
+%% HeteroTyper Pipeline
 
 % load all images within input folder
 

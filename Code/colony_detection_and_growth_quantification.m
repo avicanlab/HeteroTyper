@@ -1,4 +1,4 @@
-%% 11.11.2025 - HeteroTyper Pipeline for Bright Plates
+%% HeteroTyper Pipeline
 %%
 %% SINGLE UNIFIED PIPELINE — no redundant filtering:
 %%
@@ -203,13 +203,13 @@ function colonies = colony_detection_and_growth_quantification(inp, position_nam
     sum_intensity_sm = medfilt1(sum_intensity, 3, [], 1);
     colony_size_sm   = medfilt1(colony_size,   3, [], 1);
 
-    lag_thr = params.lag_time_thresh;
-    lag_ix  = zeros(1, nr_clean);
+    appearance_thr = params.appearance_time_thresh;
+    appearance_ix  = zeros(1, nr_clean);
     AUC     = zeros(1, nr_clean);
     finalSz = zeros(1, nr_clean);
     for j = 1:nr_clean
-        hit = find(colony_size_sm(:,j) > lag_thr, 1, 'first');
-        if ~isempty(hit), lag_ix(j) = hit; else, lag_ix(j) = T; end
+        hit = find(colony_size_sm(:,j) > appearance_thr, 1, 'first');
+        if ~isempty(hit), appearance_ix(j) = hit; else, appearance_ix(j) = T; end
         AUC(j)     = trapz(time_h, colony_size_sm(:,j));
         finalSz(j) = colony_size_sm(T,j);
     end
@@ -234,7 +234,7 @@ function colonies = colony_detection_and_growth_quantification(inp, position_nam
         'timecourse_intensity_smoothed', sum_intensity_sm, ...
         'timecourse_size',               colony_size, ...
         'timecourse_size_smoothed',      colony_size_sm, ...
-        'lag_time',                      time_h(lag_ix), ...
+        'appearance_time',                      time_h(appearance_ix), ...
         'AUC',                           AUC, ...
         'final_col_size',                finalSz);
 
@@ -243,7 +243,7 @@ function colonies = colony_detection_and_growth_quantification(inp, position_nam
     colonies.timecourse_intensity_smoothed = colonies.new.timecourse_intensity_smoothed;
     colonies.timecourse_size               = colonies.new.timecourse_size;
     colonies.timecourse_size_smoothed      = colonies.new.timecourse_size_smoothed;
-    colonies.lag_time                      = colonies.new.lag_time;
+    colonies.appearance_time                      = colonies.new.appearance_time;
     colonies.AUC                           = colonies.new.AUC;
     colonies.final_col_size                = colonies.new.final_col_size;
 

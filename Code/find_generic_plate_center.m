@@ -1,4 +1,4 @@
-%% 11.11.2025 - HeteroTyper Pipeline for Bright Plates
+%% HeteroTyper Pipeline
 %% Per-plate center detection: each plate gets its own median center computed
 %% across a sample of its own image stack (not a global cross-plate median).
 %%

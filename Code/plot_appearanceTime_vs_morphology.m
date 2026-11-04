@@ -1,12 +1,12 @@
-%% HeteroTyper Pipeline for Bright Plates
-% Scatter plots of lag time vs selected morphological features,
+%% HeteroTyper Pipeline
+% Scatter plots of appearance time vs selected morphological features,
 % for selected sample groups.
 % Requires preprocess_pipeline_data(data) to have been run first.
 %
 % USAGE:
-%   plot_lagTime_vs_morphology(ht)
+%   plot_appearanceTime_vs_morphology(ht)
 
-function plot_lagTime_vs_morphology(ht)
+function plot_appearanceTime_vs_morphology(ht)
     HT_FLOG = -1;  % log file handle (opened after params are loaded)
 
     check_ht(ht);
@@ -20,7 +20,7 @@ function plot_lagTime_vs_morphology(ht)
     % ------------------------------------------------------------------
     timestamp_log = datestr(now, 'yyyymmdd_HHMMSS');
     log_path = fullfile(p.out_dir, ...
-                        sprintf('plot_lagTime_vs_morphology_%s.txt', timestamp_log));
+                        sprintf('plot_appearanceTime_vs_morphology_%s.txt', timestamp_log));
     HT_FLOG = fopen(log_path, 'w');
     if HT_FLOG == -1
         warning('Could not open log file: %s', log_path);
@@ -58,7 +58,7 @@ function plot_lagTime_vs_morphology(ht)
     param_fields = all_param_fields(sel_params);
     param_ylims  = all_ylims(sel_params);
 
-    ht_fprintf(HT_FLOG, '\n--- Lag Time vs Morphology parameters ---\n');
+    ht_fprintf(HT_FLOG, '\n--- Appearance Time vs Morphology parameters ---\n');
     ht_fprintf(HT_FLOG, '  Groups   : %s\n', strjoin(labels(sel_groups), ', '));
     ht_fprintf(HT_FLOG, '  Features : %s\n', strjoin(param_names, ', '));
     ht_fprintf(HT_FLOG, '  Output   : %s\n', p.out_dir);
@@ -75,7 +75,7 @@ function plot_lagTime_vs_morphology(ht)
     fig_w = margin_l + n_params*panel_w + (n_params-1)*gap_x + margin_r;
     fig_h = margin_b + panel_h + margin_t;
 
-    hfig = figure('Name','Lag Time vs Morphology', ...
+    hfig = figure('Name','Appearance Time vs Morphology', ...
                   'Color','w', ...
                   'Units','inches', ...
                   'Position',[1 1 fig_w fig_h], ...
@@ -94,7 +94,7 @@ function plot_lagTime_vs_morphology(ht)
         % left offset to accommodate y-axis tick labels.
         panel_left_offset = (pi-1) * (panel_w + gap_x);
         left = (margin_l + panel_left_offset) / fig_w;
-        ax_all(pi) = axes('Position', ...   %#ok<LAXES>
+        ax_all(pi) = axes('Position', ...
             [left, margin_b/fig_h, panel_w/fig_w, panel_h/fig_h]);
         hold(ax_all(pi), 'on');
     end
@@ -104,8 +104,8 @@ function plot_lagTime_vs_morphology(ht)
     % ------------------------------------------------------------------
     has_corr = isfield(ht.groups(1), 'morph_corr');
     if ~has_corr
-        warning(['plot_lagTime_vs_morphology: ht.groups(g).morph_corr not found.\n' ...
-                 'Re-run preprocess_pipeline_data to compute lag-morphology correlations.\n' ...
+        warning(['plot_appearanceTime_vs_morphology: ht.groups(g).morph_corr not found.\n' ...
+                 'Re-run preprocess_pipeline_data to compute appearance-morphology correlations.\n' ...
                  'Figures will be produced without stats annotations.']);
     end
 
@@ -129,11 +129,11 @@ function plot_lagTime_vs_morphology(ht)
             g   = sel_groups(gi);
             grp = ht.groups(g);
 
-            lag  = grp.lag_time;
+            appearance  = grp.appearance_time;
             feat = grp.(field);
-            ok   = isfinite(lag) & isfinite(feat);
+            ok   = isfinite(appearance) & isfinite(feat);
 
-            scatter(ax, lag(ok), feat(ok), 12, colors(g,:), ...
+            scatter(ax, appearance(ok), feat(ok), 12, colors(g,:), ...
                     'filled', 'MarkerFaceAlpha', 0.30, ...
                     'DisplayName', labels{g});
 
@@ -151,8 +151,8 @@ function plot_lagTime_vs_morphology(ht)
 
             % ---- Linear regression line (spans actual data range only) ----
             if isfinite(mc.slope) && isfinite(mc.intercept)
-                x_data_lo = min(lag(ok));
-                x_data_hi = max(lag(ok));
+                x_data_lo = min(appearance(ok));
+                x_data_hi = max(appearance(ok));
                 x_reg = linspace(x_data_lo, x_data_hi, 100);
                 y_reg = mc.intercept + mc.slope * x_reg;
                 % Clamp to y-axis limits so line doesn't escape the panel
@@ -195,7 +195,7 @@ function plot_lagTime_vs_morphology(ht)
             yl      = param_ylims{pi};
             y_range = yl(2) - yl(1);
             y_ann   = yl(2) - (gi - 0.5) * y_range * 0.16;
-            x_ann   = p.max_lag - 0.02*(p.max_lag - p.incTime);
+            x_ann   = p.max_appearance - 0.02*(p.max_appearance - p.incTime);
 
             text(ax, x_ann, y_ann, ann, ...
                  'Color',               dark_col, ...
@@ -212,14 +212,14 @@ function plot_lagTime_vs_morphology(ht)
                 mc.rho, fmt_p(mc.p_spearman, '%.4g'), mc.eq_str);
         end
 
-        xlim(ax, [p.incTime, p.max_lag]);
-        xticks(ax, p.incTime:4:p.max_lag);
+        xlim(ax, [p.incTime, p.max_appearance]);
+        xticks(ax, p.incTime:4:p.max_appearance);
         ylim(ax, param_ylims{pi});
 
         ylabel(ax, param_names{pi}, ...
                'FontSize',fs_label, 'FontWeight','bold', ...
                'Interpreter','none');
-        xlabel(ax, 'Lag Time (h)', 'FontSize',fs_label, 'FontWeight','bold');
+        xlabel(ax, 'Appearance Time (h)', 'FontSize',fs_label, 'FontWeight','bold');
 
         title(ax, param_names{pi}, ...
               'FontSize',fs_label, 'FontWeight','bold', ...
@@ -247,7 +247,7 @@ function plot_lagTime_vs_morphology(ht)
     out_dir   = p.out_dir;
     timestamp = datestr(now, 'yyyymmdd_HHMMSS');
     grp_str   = strjoin(labels(sel_groups), '-');
-    base_name = sprintf('LagTime_vs_Morphology_%s_%s', grp_str, timestamp);
+    base_name = sprintf('AppearanceTime_vs_Morphology_%s_%s', grp_str, timestamp);
     fig_path  = fullfile(out_dir, base_name);
 
     savefig(hfig,  [fig_path '.fig']);
@@ -320,7 +320,7 @@ end
 function sel_idx = ask_param_selection(HT_FLOG, param_names)
 
     n = length(param_names);
-    ht_fprintf(HT_FLOG, '\nAvailable morphological features to plot against lag time:\n');
+    ht_fprintf(HT_FLOG, '\nAvailable morphological features to plot against appearance time:\n');
     ht_fprintf(HT_FLOG, '  +-----+---------------------+\n');
     for k = 1:n
         ht_fprintf(HT_FLOG, '  | %3d | %-19s |\n', k, param_names{k});
