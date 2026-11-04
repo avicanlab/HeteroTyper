@@ -1,5 +1,7 @@
 # HeteroTyper
 
+[![DOI](https://zenodo.org/badge/1097846866.svg)](https://doi.org/10.5281/zenodo.23951320)
+
 Automated, high-throughput system for imaging bacterial colonies and quantifying phenotypic heterogeneity, including appearance time, growth rate, doubling time, final colony size, and shape descriptors, at the single-colony level.
 
 HeteroTyper consists of two components:
