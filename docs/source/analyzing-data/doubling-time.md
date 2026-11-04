@@ -12,7 +12,7 @@ the `ht` struct — no recomputation at plot time.
 
 ## Requirements
 
-- MATLAB R2020a or later (`exportgraphics` required).
+- MATLAB R2023b or later (`exportgraphics` required).
 - `preprocess_pipeline_data(data);` must be run first to generate the `ht` struct,
   including `hist`, `gini`, `stats`, and `xbins`.
 
@@ -125,5 +125,5 @@ plot_doublingTime(ht);
 | `ht.xbins.doublingTime` not found | Re-run the updated `preprocess_pipeline_data`. The script falls back to on-the-fly bin computation with a warning, but pre-computed histogram, Gini, and stats will not be available. |
 | Median shown as `NaN` h in annotation | Same root cause as above — old `ht` struct in workspace. Re-run the updated preprocessor. |
 | No valid doubling time data for a group | All colonies either failed QC or never doubled within the observation window. Check `size_threshold`, `ecc_threshold`, and imaging duration in `preprocess_pipeline_data`. |
-| `exportgraphics` error | Requires MATLAB R2020a+. Use `print()` as a fallback on older versions. |
+| `exportgraphics` error | Requires MATLAB R2023b or later. Use `print()` as a fallback on older versions. |
 | Log file not created | Check that `ht.params.out_dir` exists and is writable. |

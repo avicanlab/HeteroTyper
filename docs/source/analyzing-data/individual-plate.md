@@ -6,8 +6,8 @@
 
 Interactively visualises a single plate from the raw `data` struct. The plate image is
 shown alongside its per-colony growth curves. Three colour modes are available:
-rainbow segmentation (assigns a random jet colour to each colony mask), lag time
-(parula palette from `incTime` to `max_lag`), and final colony size (parula palette
+rainbow segmentation (assigns a random jet colour to each colony mask), appearance time
+(parula palette from `incTime` to `max_appearance`), and final colony size (parula palette
 from 0 to max observed size). Colony indices are overlaid on the image. This script
 works directly on the raw `data` struct and does not require `ht`.
 
@@ -36,14 +36,14 @@ plot_individual_plate(data);
 | Prompt | Description |
 |---|---|
 | Plate position (1–N)? | Index of the plate to visualise. Must be a valid index in `data.processed`. |
-| Color by (0) segmentation, (1) lag-time, (2) col size? | `0`: rainbow jet segmentation. `1`: parula palette mapped to lag time (`incTime` to `max_lag`). `2`: parula palette mapped to final colony size (0 to plate maximum). |
+| Color by (0) segmentation, (1) appearance-time, (2) col size? | `0`: rainbow jet segmentation. `1`: parula palette mapped to appearance time (`incTime` to `max_appearance`). `2`: parula palette mapped to final colony size (0 to plate maximum). |
 
 ## Hard-coded Parameters
 
 | Parameter | Default / Description |
 |---|---|
-| `incTime` | 20 h — added to raw lag times for display |
-| `max_lag` | 52 h — upper bound of the lag time colour scale and growth curve x-axis |
+| `incTime` | 20 h — added to raw appearance times for display |
+| `max_appearance` | 52 h — upper bound of the appearance time colour scale and growth curve x-axis |
 
 ## Figure Layout
 
