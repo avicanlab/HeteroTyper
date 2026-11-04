@@ -1,6 +1,9 @@
-%% HeteroTyper Pipeline for Bright Plates
+%% HeteroTyper Pipeline
 % Plots per-group probability density histograms for user-selected
 % phenotypic features, with Gini index and smart corner labels.
+% Same as plot_combined_samples.m, plus an "n = ..." label per panel:
+% the number of non-NaN colonies plotted for that feature (size-filtered,
+% censored excluded).
 %
 % Requires preprocess_pipeline_data(data) to have been run first.
 %
@@ -26,7 +29,7 @@ function plot_combined_samples(ht)
     xb     = ht.xbins;
 
     incTime = p.incTime;
-    max_lag = p.max_lag;
+    max_appearance = p.max_appearance;
     out_dir = p.out_dir;
 
     % ------------------------------------------------------------------
@@ -102,8 +105,8 @@ function plot_combined_samples(ht)
     % ------------------------------------------------------------------
     %  Build x bin midpoint vectors (used for bar centres)
     % ------------------------------------------------------------------
-    lag_step    = xb.lag_step;
-    xp_lag      = xb.lag(1:end-1)         + lag_step/2;
+    appearance_step    = xb.appearance_step;
+    xp_appearance      = xb.appearance(1:end-1)         + appearance_step/2;
     xp_size     = xb.size(1:end-1)        + xb.size_step/2;
     xp_area     = xb.area(1:end-1)        + xb.area_step/2;
     xp_peri     = xb.perimeter(1:end-1)   + xb.peri_step/2;
@@ -142,9 +145,9 @@ function plot_combined_samples(ht)
 
         % Print terminal range summary (median, IQR, Gini per feature)
         tlog('Group %s  (n=%d colonies):\n', labels{g}, grp.n_colonies);
-        fns = {'lag_time','size','area','intensity','mean_intensity', ...
+        fns = {'appearance_time','size','area','intensity','mean_intensity', ...
                'int_per_size','perimeter','circularity','eccentricity','solidity'};
-        flab = {'Lag Time','Size','Area','Intensity','Mean Intensity', ...
+        flab = {'Appearance Time','Size','Area','Intensity','Mean Intensity', ...
                 'Int/Size','Perimeter','Circularity','Eccentricity','Solidity'};
         tlog('  %-16s  %10s  %10s  %10s  %10s  %10s  %8s\n', ...
             'Feature', 'Min', 'Max', 'Median', 'IQR', 'Gini', 'n');
@@ -174,7 +177,7 @@ function plot_combined_samples(ht)
         norm_ips  = grp.hist.int_per_size;
 
         all_panels = { ...
-            grp.hist.lag_time,     xp_lag,  [incTime, max_lag+lag_step], 'Lag time (h)',      grp.lag_time;       ...
+            grp.hist.appearance_time,     xp_appearance,  [incTime, max_appearance+appearance_step], 'Appearance time (h)',      grp.appearance_time;       ...
             grp.hist.size,         xp_size, [0, xb.size_upper],          'Colony size (px)',  grp.size;           ...
             grp.hist.area,         xp_area, [0, xb.area_upper],          'Area (px)',         grp.area;           ...
             norm_int,              xp_int,  [0, int_upper],              'Intensity',         grp.intensity;      ...
@@ -206,9 +209,9 @@ function plot_combined_samples(ht)
             if y_max == 0, y_max = 1; end
             axis([xlims(1) xlims(2) 0 y_max]);
 
-            % Lag time: decade x-ticks
+            % Appearance time: decade x-ticks
             if feat_id == 1
-                xticks(incTime:10:max_lag);
+                xticks(incTime:10:max_appearance);
             end
 
             % Median line (omit NaNs from censored/rejected colonies)
@@ -230,6 +233,12 @@ function plot_combined_samples(ht)
                  'Clipping','off');
             text(x_txt, y_max*0.87, sprintf('%.3f', gini_val), ...
                  'FontSize',fs_gini, 'Color',colors(g,:), ...
+                 'HorizontalAlignment','left', 'VerticalAlignment','top', ...
+                 'Clipping','off');
+            % Colony count actually plotted in this panel (non-NaN values)
+            n_plot = sum(~isnan(data_vec));
+            text(x_txt, y_max*0.77, sprintf('n = %d', n_plot), ...
+                 'FontSize',fs_gini, 'Color','k', ...
                  'HorizontalAlignment','left', 'VerticalAlignment','top', ...
                  'Clipping','off');
 
@@ -610,9 +619,9 @@ function plot_combined_samples(ht)
     tlog('  DISTRIBUTION STATISTICS  (Median | IQR | Gini | n)\n');
     tlog('============================================================\n');
 
-    fns_ds  = {'lag_time','size','area','intensity','mean_intensity', ...
+    fns_ds  = {'appearance_time','size','area','intensity','mean_intensity', ...
                'int_per_size','perimeter','circularity','eccentricity','solidity'};
-    flab_ds = {'Lag Time','Size','Area','Intensity','Mean Intensity', ...
+    flab_ds = {'Appearance Time','Size','Area','Intensity','Mean Intensity', ...
                'Int/Size','Perimeter','Circularity','Eccentricity','Solidity'};
 
     % Terminal header
@@ -907,7 +916,7 @@ function [sel_groups, plot_feat_ix] = ask_selections(ht)
 
     fprintf('\n  FEATURES\n');
     fprintf('  +----+--------------------------+\n');
-    fprintf('  |  1 | Lag time                 |\n');
+    fprintf('  |  1 | Appearance time                 |\n');
     fprintf('  |  2 | Colony size              |\n');
     fprintf('  |  3 | Area                     |\n');
     fprintf('  |  4 | Intensity                |\n');
@@ -977,7 +986,7 @@ function plot_feat_ix = ask_feature_selection()
 
     fprintf('\nSelect phenotypic features to visualise\n');
     fprintf('   +----+--------------------------+\n');
-    fprintf('   |  1 | Lag time                 |\n');
+    fprintf('   |  1 | Appearance time                 |\n');
     fprintf('   |  2 | Colony size              |\n');
     fprintf('   |  3 | Area                     |\n');
     fprintf('   |  4 | Intensity                |\n');

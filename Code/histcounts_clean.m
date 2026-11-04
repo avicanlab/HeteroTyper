@@ -1,4 +1,4 @@
-%% 11.11.2025 - HeteroTyper Pipeline for Bright Plates
+%% HeteroTyper Pipeline
 
 function [N ,plot_edges,label] = histcounts_clean(Y,bin_edges)
 

@@ -1,13 +1,13 @@
 %% HeteroTyper Pipeline
-%  plot_morphology_colonies_Gini  —  Violin + scatter of lag time AND final
+%  plot_morphology_colonies_Gini  —  Violin + scatter of appearance time AND final
 %  colony size per plate, grouped by sample time.  For each metric the Gini
 %  coefficient is annotated on every plate tick, and the correlation between
 %  colony count and Gini is shown in the subplot title.
 %
 %  Four figures are produced:
-%    Figure 1 — Lag time,      Spearman corr(N, Gini) in title
+%    Figure 1 — Appearance time,      Spearman corr(N, Gini) in title
 %    Figure 2 — Colony size,   Spearman corr(N, Gini) in title
-%    Figure 3 — Lag time,      Pearson  corr(N, Gini) in title
+%    Figure 3 — Appearance time,      Pearson  corr(N, Gini) in title
 %    Figure 4 — Colony size,   Pearson  corr(N, Gini) in title
 %
 %%  USAGE
@@ -43,7 +43,10 @@ function stats = plot_morphology_colonies_Gini(ht, raw_data)
     labels    = ht.labels;
     n_groups  = length(labels);
     incTime   = p.incTime;
-    max_lag   = p.max_lag;
+    % Gini origin for appearance times (hours since inoculation -> hours since imaging start)
+    gini_org = incTime;
+    if isfield(p, 'gini_appearance_origin'), gini_org = p.gini_appearance_origin; end
+    max_appearance   = p.max_appearance;
     out_dir   = p.out_dir;
     nr_plates = ht.qc.nr_plates;
 
@@ -85,10 +88,10 @@ function stats = plot_morphology_colonies_Gini(ht, raw_data)
     plate_labels = ht.plate_labels;
 
     %% ----------------------------------------------------------------
-    %  2.  Per-plate lag-time cache
+    %  2.  Per-plate appearance-time cache
     %% ----------------------------------------------------------------
     if ~isfield(ht, 'per_plate') || isempty(fieldnames(ht.per_plate))
-        ht = build_per_plate_lag_cache(ht, raw_data, incTime, max_lag);
+        ht = build_per_plate_appearance_cache(ht, raw_data, incTime, max_appearance);
         assignin('base', 'ht', ht);
     end
 
@@ -127,23 +130,23 @@ function stats = plot_morphology_colonies_Gini(ht, raw_data)
             end
         end
 
-        lag_vals  = cell(n_plates, 1);   % per-plate lag vectors
+        appearance_vals  = cell(n_plates, 1);   % per-plate appearance vectors
         size_vals = cell(n_plates, 1);   % per-plate size vectors
-        N_col     = nan(n_plates, 1);    % colony count (same for lag and size)
-        gini_lag  = nan(n_plates, 1);
+        N_col     = nan(n_plates, 1);    % colony count (same for appearance and size)
+        gini_appearance  = nan(n_plates, 1);
         gini_size = nan(n_plates, 1);
 
         for pi = 1:n_plates
             pidx = plate_ids(pi);
 
-            % --- Lag time ---
-            fld_lag = sprintf('plate_%d', pidx);
-            if isfield(ht.per_plate, fld_lag) && ~isempty(ht.per_plate.(fld_lag))
-                lag = ht.per_plate.(fld_lag);
-                lag_vals{pi} = lag;
-                N_col(pi)   = numel(lag);
-                if numel(lag) >= 3
-                    gini_lag(pi) = gini_coeff(lag);
+            % --- Appearance time ---
+            fld_appearance = sprintf('plate_%d', pidx);
+            if isfield(ht.per_plate, fld_appearance) && ~isempty(ht.per_plate.(fld_appearance))
+                appearance = ht.per_plate.(fld_appearance);
+                appearance_vals{pi} = appearance;
+                N_col(pi)   = numel(appearance);
+                if numel(appearance) >= 3
+                    gini_appearance(pi) = gini_coeff(appearance, gini_org);
                 end
             else
                 N_col(pi) = 0;
@@ -165,16 +168,16 @@ function stats = plot_morphology_colonies_Gini(ht, raw_data)
         pd(g).plate_ids   = plate_ids;
         pd(g).n_plates    = n_plates;
         pd(g).tick_labels = tick_labels;
-        pd(g).lag_vals    = lag_vals;
+        pd(g).appearance_vals    = appearance_vals;
         pd(g).size_vals   = size_vals;
         pd(g).N_col       = N_col;
-        pd(g).gini_lag    = gini_lag;
+        pd(g).gini_appearance    = gini_appearance;
         pd(g).gini_size   = gini_size;
 
         % Export per-group Gini tables to workspace
-        T_lag = table((1:n_plates)', tick_labels(:), N_col, gini_lag, ...
-                      'VariableNames',{'PlatePos','Label','N_colonies','Gini_lag'});
-        assignin('base', ['GiniTable_lag_'  pd(g).fn], T_lag);
+        T_appearance = table((1:n_plates)', tick_labels(:), N_col, gini_appearance, ...
+                      'VariableNames',{'PlatePos','Label','N_colonies','Gini_appearance'});
+        assignin('base', ['GiniTable_appearance_'  pd(g).fn], T_appearance);
 
         T_size = table((1:n_plates)', tick_labels(:), N_col, gini_size, ...
                        'VariableNames',{'PlatePos','Label','N_colonies','Gini_size'});
@@ -184,9 +187,9 @@ function stats = plot_morphology_colonies_Gini(ht, raw_data)
     %% ----------------------------------------------------------------
     %  5.  Y-axis ranges
     %% ----------------------------------------------------------------
-    y_lo_lag   = incTime;
-    y_hi_lag   = max_lag + 6;
-    y_gini_lag = max_lag + 2.0;
+    y_lo_appearance   = incTime;
+    y_hi_appearance   = max_appearance + 6;
+    y_gini_appearance = max_appearance + 2.0;
 
     all_sizes_pooled = [];
     for g = 1:n_groups
@@ -205,27 +208,27 @@ function stats = plot_morphology_colonies_Gini(ht, raw_data)
     y_gini_size = y_hi_size * 0.92;
 
     %% ----------------------------------------------------------------
-    %  6.  Compute correlation tables (Spearman + Pearson, lag + size)
+    %  6.  Compute correlation tables (Spearman + Pearson, appearance + size)
     %% ----------------------------------------------------------------
-    [CorrTable_lag_sp,   pool_lag_sp]  = compute_corr_table(pd, n_groups, 'lag',  'Spearman');
-    [CorrTable_lag_pe,   pool_lag_pe]  = compute_corr_table(pd, n_groups, 'lag',  'Pearson');
+    [CorrTable_appearance_sp,   pool_appearance_sp]  = compute_corr_table(pd, n_groups, 'appearance',  'Spearman');
+    [CorrTable_appearance_pe,   pool_appearance_pe]  = compute_corr_table(pd, n_groups, 'appearance',  'Pearson');
     [CorrTable_size_sp,  pool_size_sp] = compute_corr_table(pd, n_groups, 'size', 'Spearman');
     [CorrTable_size_pe,  pool_size_pe] = compute_corr_table(pd, n_groups, 'size', 'Pearson');
 
     % Print and export all four tables
-    print_corr_table('Lag time',     'Spearman', CorrTable_lag_sp,  pool_lag_sp);
-    print_corr_table('Lag time',     'Pearson',  CorrTable_lag_pe,  pool_lag_pe);
+    print_corr_table('Appearance time',     'Spearman', CorrTable_appearance_sp,  pool_appearance_sp);
+    print_corr_table('Appearance time',     'Pearson',  CorrTable_appearance_pe,  pool_appearance_pe);
     print_corr_table('Colony size',  'Spearman', CorrTable_size_sp, pool_size_sp);
     print_corr_table('Colony size',  'Pearson',  CorrTable_size_pe, pool_size_pe);
 
-    assignin('base', 'GiniCorr_NvsGini_lag_Spearman',  CorrTable_lag_sp);
-    assignin('base', 'GiniCorr_NvsGini_lag_Pearson',   CorrTable_lag_pe);
+    assignin('base', 'GiniCorr_NvsGini_appearance_Spearman',  CorrTable_appearance_sp);
+    assignin('base', 'GiniCorr_NvsGini_appearance_Pearson',   CorrTable_appearance_pe);
     assignin('base', 'GiniCorr_NvsGini_size_Spearman', CorrTable_size_sp);
     assignin('base', 'GiniCorr_NvsGini_size_Pearson',  CorrTable_size_pe);
 
     fprintf('Correlation tables saved to workspace:\n');
-    fprintf('  GiniCorr_NvsGini_lag_Spearman\n');
-    fprintf('  GiniCorr_NvsGini_lag_Pearson\n');
+    fprintf('  GiniCorr_NvsGini_appearance_Spearman\n');
+    fprintf('  GiniCorr_NvsGini_appearance_Pearson\n');
     fprintf('  GiniCorr_NvsGini_size_Spearman\n');
     fprintf('  GiniCorr_NvsGini_size_Pearson\n\n');
 
@@ -235,13 +238,13 @@ function stats = plot_morphology_colonies_Gini(ht, raw_data)
     stats = struct();
     for g = 1:n_groups
         fn  = pd(g).fn;
-        all_lag  = vertcat_cell(pd(g).lag_vals);
+        all_appearance  = vertcat_cell(pd(g).appearance_vals);
         all_size = vertcat_cell(pd(g).size_vals);
         stats.(fn).label       = pd(g).label;
         stats.(fn).N           = sum(pd(g).N_col(~isnan(pd(g).N_col)));
-        stats.(fn).lag         = all_lag;
-        stats.(fn).median_lag  = safe_median(all_lag);
-        stats.(fn).iqr_lag     = safe_iqr(all_lag);
+        stats.(fn).appearance         = all_appearance;
+        stats.(fn).median_appearance  = safe_median(all_appearance);
+        stats.(fn).iqr_appearance     = safe_iqr(all_appearance);
         stats.(fn).size        = all_size;
         stats.(fn).median_size = safe_median(all_size);
         stats.(fn).iqr_size    = safe_iqr(all_size);
@@ -252,23 +255,23 @@ function stats = plot_morphology_colonies_Gini(ht, raw_data)
     %% ----------------------------------------------------------------
     ts = datestr(now, 'yyyymmdd_HHMMSS');
 
-    cfg_lag_sp  = make_cfg('lag',  'Spearman', y_lo_lag,  y_hi_lag,  y_gini_lag,  CorrTable_lag_sp);
-    cfg_lag_pe  = make_cfg('lag',  'Pearson',  y_lo_lag,  y_hi_lag,  y_gini_lag,  CorrTable_lag_pe);
+    cfg_appearance_sp  = make_cfg('appearance',  'Spearman', y_lo_appearance,  y_hi_appearance,  y_gini_appearance,  CorrTable_appearance_sp);
+    cfg_appearance_pe  = make_cfg('appearance',  'Pearson',  y_lo_appearance,  y_hi_appearance,  y_gini_appearance,  CorrTable_appearance_pe);
     cfg_size_sp = make_cfg('size', 'Spearman', y_lo_size, y_hi_size, y_gini_size, CorrTable_size_sp);
     cfg_size_pe = make_cfg('size', 'Pearson',  y_lo_size, y_hi_size, y_gini_size, CorrTable_size_pe);
 
-    hfig1 = draw_figure(pd, n_groups, ht.colors, cfg_lag_sp,  labels, n_groups);
+    hfig1 = draw_figure(pd, n_groups, ht.colors, cfg_appearance_sp,  labels, n_groups);
     hfig2 = draw_figure(pd, n_groups, ht.colors, cfg_size_sp, labels, n_groups);
-    hfig3 = draw_figure(pd, n_groups, ht.colors, cfg_lag_pe,  labels, n_groups);
+    hfig3 = draw_figure(pd, n_groups, ht.colors, cfg_appearance_pe,  labels, n_groups);
     hfig4 = draw_figure(pd, n_groups, ht.colors, cfg_size_pe, labels, n_groups);
 
     %% ----------------------------------------------------------------
     %  9.  Save all four figures
     %% ----------------------------------------------------------------
     fnames = { ...
-        sprintf('morphology_Gini_lagTime_Spearman_%s',  ts), ...
+        sprintf('morphology_Gini_appearanceTime_Spearman_%s',  ts), ...
         sprintf('morphology_Gini_colonySize_Spearman_%s', ts), ...
-        sprintf('morphology_Gini_lagTime_Pearson_%s',   ts), ...
+        sprintf('morphology_Gini_appearanceTime_Pearson_%s',   ts), ...
         sprintf('morphology_Gini_colonySize_Pearson_%s',  ts)};
     hfigs = {hfig1, hfig2, hfig3, hfig4};
 
@@ -306,20 +309,20 @@ function stats = plot_morphology_colonies_Gini(ht, raw_data)
         fprintf(fid, '  Per-group summary\n');
         fprintf(fid, '------------------------------------------------\n');
         fprintf(fid, '  %-12s  %6s  %12s  %10s  %12s  %10s\n', ...
-            'Group', 'N', 'Med lag(h)', 'IQR lag', 'Med size(px)', 'IQR size');
+            'Group', 'N', 'Med appearance(h)', 'IQR appearance', 'Med size(px)', 'IQR size');
         for g = 1:n_groups
             fn = pd(g).fn;
             fprintf(fid, '  %-12s  %6d  %12.2f  %10.2f  %12.1f  %10.1f\n', ...
                 pd(g).label, stats.(fn).N, ...
-                stats.(fn).median_lag,  stats.(fn).iqr_lag, ...
+                stats.(fn).median_appearance,  stats.(fn).iqr_appearance, ...
                 stats.(fn).median_size, stats.(fn).iqr_size);
         end
         fprintf(fid, '\n');
 
         % Correlation tables
         corr_configs = { ...
-            'Lag time',    'Spearman', CorrTable_lag_sp;  ...
-            'Lag time',    'Pearson',  CorrTable_lag_pe;  ...
+            'Appearance time',    'Spearman', CorrTable_appearance_sp;  ...
+            'Appearance time',    'Pearson',  CorrTable_appearance_pe;  ...
             'Colony size', 'Spearman', CorrTable_size_sp; ...
             'Colony size', 'Pearson',  CorrTable_size_pe};
 
@@ -349,11 +352,11 @@ function stats = plot_morphology_colonies_Gini(ht, raw_data)
         fprintf(fid, '------------------------------------------------\n');
         for g = 1:n_groups
             fprintf(fid, '  Group: %s\n', pd(g).label);
-            fprintf(fid, '    %-20s  %6s  %8s  %8s\n', 'Plate','N','Gini_lag','Gini_sz');
+            fprintf(fid, '    %-20s  %6s  %8s  %8s\n', 'Plate','N','Gini_appearance','Gini_sz');
             for pi = 1:pd(g).n_plates
                 fprintf(fid, '    %-20s  %6d  %8.3f  %8.3f\n', ...
                     pd(g).tick_labels{pi}, pd(g).N_col(pi), ...
-                    pd(g).gini_lag(pi), pd(g).gini_size(pi));
+                    pd(g).gini_appearance(pi), pd(g).gini_size(pi));
             end
             fprintf(fid, '\n');
         end
@@ -374,15 +377,15 @@ end
 %  Packages the draw parameters for one figure variant into a struct.
 %% ====================================================================
 function cfg = make_cfg(metric, corr_type, y_lo, y_hi, y_gini, corr_table)
-    cfg.metric      = metric;      % 'lag' | 'size'
+    cfg.metric      = metric;      % 'appearance' | 'size'
     cfg.corr_type   = corr_type;   % 'Spearman' | 'Pearson'
     cfg.y_lo        = y_lo;
     cfg.y_hi        = y_hi;
     cfg.y_gini      = y_gini;
     cfg.corr_table  = corr_table;  % table with Group / Spearman_r (or Pearson_r) / P_value
-    if strcmp(metric, 'lag')
-        cfg.ylabel_str = 'Lag time (h)';
-        cfg.fig_name   = sprintf('Lag time — colonies & Gini (%s)', corr_type);
+    if strcmp(metric, 'appearance')
+        cfg.ylabel_str = 'Appearance time (h)';
+        cfg.fig_name   = sprintf('Appearance time — colonies & Gini (%s)', corr_type);
     else
         cfg.ylabel_str = 'Final colony size (px)';
         cfg.fig_name   = sprintf('Colony size — colonies & Gini (%s)', corr_type);
@@ -411,7 +414,7 @@ function hfig = draw_figure(pd, n_groups, group_colors, cfg, labels, n_grp)
                   'PaperUnits','inches','PaperSize',[fig_w fig_h], ...
                   'PaperPosition',[0 0 fig_w fig_h]);
 
-    use_lag = strcmp(cfg.metric, 'lag');
+    use_appearance = strcmp(cfg.metric, 'appearance');
 
     for g = 1:n_grp
         ax = subplot(n_rows_fig, n_cols_fig, g);
@@ -427,8 +430,8 @@ function hfig = draw_figure(pd, n_groups, group_colors, cfg, labels, n_grp)
         % for each subplot, so each group uses its own data scale.
         all_grp_vals = [];
         for pi_tmp = 1:n_plates
-            if use_lag
-                v_tmp = pd(g).lag_vals{pi_tmp};
+            if use_appearance
+                v_tmp = pd(g).appearance_vals{pi_tmp};
             else
                 v_tmp = pd(g).size_vals{pi_tmp};
             end
@@ -453,8 +456,8 @@ function hfig = draw_figure(pd, n_groups, group_colors, cfg, labels, n_grp)
         % -----------------------------------------------------------------------
 
         for pi = 1:n_plates
-            if use_lag
-                vals = pd(g).lag_vals{pi};
+            if use_appearance
+                vals = pd(g).appearance_vals{pi};
             else
                 vals = pd(g).size_vals{pi};
             end
@@ -466,9 +469,9 @@ function hfig = draw_figure(pd, n_groups, group_colors, cfg, labels, n_grp)
             % Violin
             if n_col > 5
                 try
-                    if use_lag
-                        % Lag time: bounded support keeps the violin within
-                        % the valid [incTime, max_lag] range.
+                    if use_appearance
+                        % Appearance time: bounded support keeps the violin within
+                        % the valid [incTime, max_appearance] range.
                         bw = max(0.4, std(vals) * 0.18);
                         [f, yi] = ksdensity(vals, 'Bandwidth', bw, ...
                                             'Support', [cfg.y_lo, cfg.y_hi]);
@@ -508,8 +511,8 @@ function hfig = draw_figure(pd, n_groups, group_colors, cfg, labels, n_grp)
             % Gini label — placed just above this plate's own maximum so it
             % never overlaps the data points and is consistent per plate.
             if n_col >= 3
-                if use_lag
-                    G = pd(g).gini_lag(pi);
+                if use_appearance
+                    G = pd(g).gini_appearance(pi);
                 else
                     G = pd(g).gini_size(pi);
                 end
@@ -569,7 +572,7 @@ end
 %% ====================================================================
 function [T, pool] = compute_corr_table(pd, n_groups, metric, corr_type)
 
-    use_lag = strcmp(metric, 'lag');
+    use_appearance = strcmp(metric, 'appearance');
 
     groups_cell = cell(n_groups+1, 1);
     n_plates_vec = zeros(n_groups+1, 1);
@@ -581,8 +584,8 @@ function [T, pool] = compute_corr_table(pd, n_groups, metric, corr_type)
 
     for g = 1:n_groups
         N_col = pd(g).N_col;
-        if use_lag
-            gini_vec = pd(g).gini_lag;
+        if use_appearance
+            gini_vec = pd(g).gini_appearance;
         else
             gini_vec = pd(g).gini_size;
         end
@@ -769,9 +772,9 @@ end
 
 
 %% ====================================================================
-%  LOCAL: build_per_plate_lag_cache
+%  LOCAL: build_per_plate_appearance_cache
 %% ====================================================================
-function ht = build_per_plate_lag_cache(ht, raw_data, incTime, max_lag)
+function ht = build_per_plate_appearance_cache(ht, raw_data, incTime, max_appearance)
 
     nr_plates = ht.qc.nr_plates;
     min_col   = ht.params.min_col;
@@ -780,7 +783,7 @@ function ht = build_per_plate_lag_cache(ht, raw_data, incTime, max_lag)
     ht.per_plate = struct();
     n_ok = 0;  n_bad = 0;
 
-    fprintf('\n[build_per_plate_lag_cache]  %d plates...\n', nr_plates);
+    fprintf('\n[build_per_plate_appearance_cache]  %d plates...\n', nr_plates);
 
     for i = 1:nr_plates
         fld = sprintf('plate_%d', i);
@@ -796,23 +799,23 @@ function ht = build_per_plate_lag_cache(ht, raw_data, incTime, max_lag)
         end
 
         if ~isfield(proc,'colonies') || ~isfield(proc.colonies,'new') || ...
-           ~isfield(proc.colonies.new,'lag_time')
+           ~isfield(proc.colonies.new,'appearance_time')
             ht.per_plate.(fld) = [];  n_bad = n_bad+1;  continue;
         end
 
-        lag_raw = proc.colonies.new.lag_time(:) + incTime;
-        lag_raw(lag_raw >= max_lag - cens_tol) = NaN;
-        n_valid = sum(~isnan(lag_raw));
+        appearance_raw = proc.colonies.new.appearance_time(:) + incTime;
+        appearance_raw(appearance_raw >= max_appearance - cens_tol) = NaN;
+        n_valid = sum(~isnan(appearance_raw));
 
         if n_valid < min_col || n_valid > max_col
             ht.per_plate.(fld) = [];  n_bad = n_bad+1;  continue;
         end
 
-        ht.per_plate.(fld) = lag_raw(~isnan(lag_raw));
+        ht.per_plate.(fld) = appearance_raw(~isnan(appearance_raw));
         n_ok = n_ok + 1;
     end
 
-    fprintf('[build_per_plate_lag_cache]  Done: %d OK, %d skipped\n\n', n_ok, n_bad);
+    fprintf('[build_per_plate_appearance_cache]  Done: %d OK, %d skipped\n\n', n_ok, n_bad);
     assignin('base', 'ht', ht);
 end
 
@@ -843,13 +846,13 @@ function ht = build_per_plate_size_cache(ht, raw_data)
         end
 
         if ~isfield(proc,'colonies') || ~isfield(proc.colonies,'new') || ...
-           ~isfield(proc.colonies.new,'lag_time')
+           ~isfield(proc.colonies.new,'appearance_time')
             n_bad = n_bad + 1;  continue;
         end
 
         colonies = proc.colonies;
         c_new    = colonies.new;
-        n_col    = length(c_new.lag_time);
+        n_col    = length(c_new.appearance_time);
         if n_col == 0,  n_bad = n_bad + 1;  continue;  end
 
         rp_clean = [];
@@ -873,10 +876,10 @@ function ht = build_per_plate_size_cache(ht, raw_data)
         sz = rp_clean.Area;
         sz(sz < size_thr) = NaN;
 
-        % Also exclude colonies with undetectable lag time (censored).
-        lt_raw_s = proc.colonies.new.lag_time(:) + ht.params.incTime;
-        cens_tol_s = 0.5 * ht.params.lag_step;
-        is_cens_s = ~isnan(lt_raw_s) & (lt_raw_s >= ht.params.max_lag - cens_tol_s);
+        % Also exclude colonies with undetectable appearance time (censored).
+        lt_raw_s = proc.colonies.new.appearance_time(:) + ht.params.incTime;
+        cens_tol_s = 0.5 * ht.params.appearance_step;
+        is_cens_s = ~isnan(lt_raw_s) & (lt_raw_s >= ht.params.max_appearance - cens_tol_s);
         sz(is_cens_s) = NaN;
 
         per_plate_size{i} = sz(~isnan(sz));
@@ -917,7 +920,12 @@ function s = fmt_p(p, fmt)
     end
 end
 
-function G = gini_coeff(x)
+function G = gini_coeff(x, origin)
+    % Gini of (x - origin). For appearance times pass origin = incTime (see
+    % compute_gini in preprocess_pipeline_data.m for the reason).
+    if nargin < 2 || isempty(origin), origin = 0; end
+    x = x(:) - origin;
+    x(x < 0 & x > -1e-9) = 0;
     x = x(isfinite(x) & x >= 0);
     n = numel(x);
     if n < 2 || sum(x) == 0, G = NaN; return; end

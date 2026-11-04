@@ -1,4 +1,4 @@
-%% HeteroTyper Pipeline for Bright Plates
+%% HeteroTyper Pipeline
 % Exports colony images split into "valid" and "filtered" categories
 % based on intensity-per-size (IntPerSize) thresholds chosen interactively.
 % Uses the same colony population as plot_combined_samples — filtering

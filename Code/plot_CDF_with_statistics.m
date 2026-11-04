@@ -1,5 +1,5 @@
-%% HeteroTyper Pipeline for Bright Plates
-% Plots empirical survival functions (1 - CDF) for lag time:
+%% HeteroTyper Pipeline
+% Plots empirical survival functions (1 - CDF) for appearance time:
 %   Figure 1 — linear y-axis
 %   Figure 2 — log y-axis  (same S values, different display scale)
 %   Figure 3 — standalone mean-slope bar chart
@@ -44,13 +44,13 @@ function results = plot_CDF_with_statistics(ht)
     sel_idx = ask_group_selection(HT_FLOG, ht);
 
     nGroups      = length(sel_idx);
-    lag_times    = cell(nGroups, 1);
+    appearance_times    = cell(nGroups, 1);
     group_labels = cell(nGroups, 1);
     colors       = zeros(nGroups, 3);
 
     for k = 1:nGroups
         g               = sel_idx(k);
-        lag_times{k}    = ht.groups(g).lag_time;
+        appearance_times{k}    = ht.groups(g).appearance_time;
         group_labels{k} = ht.labels{g};
         colors(k, :)    = ht.colors(g, :);
     end
@@ -71,7 +71,7 @@ function results = plot_CDF_with_statistics(ht)
     results    = struct();
 
     for g = 1:nGroups
-        lt = lag_times{g};
+        lt = appearance_times{g};
         if isempty(lt), continue; end
 
         [xu, S, n, dS] = build_survival(lt);
@@ -83,16 +83,16 @@ function results = plot_CDF_with_statistics(ht)
         results(g).group      = group_labels{g};
         results(g).x          = xu;
         results(g).survival   = S;
-        % NaN-safe: lag_time may contain NaN entries for right-censored
+        % NaN-safe: appearance_time may contain NaN entries for right-censored
         % colonies (set by preprocess). prctile already ignores NaN;
         % median does not, so use 'omitnan'.
         results(g).median     = median(lt, 'omitnan');
         results(g).q25        = prctile(lt, 25);
         results(g).q75        = prctile(lt, 75);
         results(g).n          = n;
-        results(g).min_lag    = min(lt, [], 'omitnan');
-        results(g).median_lag = median(lt, 'omitnan');
-        results(g).max_lag    = max(lt, [], 'omitnan');
+        results(g).min_appearance    = min(lt, [], 'omitnan');
+        results(g).median_appearance = median(lt, 'omitnan');
+        results(g).max_appearance    = max(lt, [], 'omitnan');
         results(g).slope.max  = max(abs(dS));
         results(g).slope.mean = mean(abs(dS));
 
@@ -102,7 +102,7 @@ function results = plot_CDF_with_statistics(ht)
     % ------------------------------------------------------------------
     %  Figure 1 — Linear y-axis
     % ------------------------------------------------------------------
-    hfig_lin = figure('Name','Lag Time Survival - Linear', ...
+    hfig_lin = figure('Name','Appearance Time Survival - Linear', ...
                       'Color','w', 'Units','inches', 'Position',[1 5 6 4.5]);
     ax_lin = axes('Position',[0.12 0.13 0.82 0.80]);
     hold(ax_lin, 'on');
@@ -114,7 +114,7 @@ function results = plot_CDF_with_statistics(ht)
              'Color',colors(g,:), ...
              'DisplayName',group_labels{g});
     end
-    xlabel(ax_lin, 'Lag time (h)',       'FontWeight','bold');
+    xlabel(ax_lin, 'Appearance time (h)',       'FontWeight','bold');
     ylabel(ax_lin, 'Survival (1 - CDF)', 'FontWeight','bold');
     legend(ax_lin, 'show', 'Location','northeast');
     set(ax_lin, 'FontSize',11, 'Box','on');
@@ -123,7 +123,7 @@ function results = plot_CDF_with_statistics(ht)
     % ------------------------------------------------------------------
     %  Figure 2 — Log y-axis  (same data, display scale only)
     % ------------------------------------------------------------------
-    hfig_log = figure('Name','Lag Time Survival - Log Scale', ...
+    hfig_log = figure('Name','Appearance Time Survival - Log Scale', ...
                       'Color','w', 'Units','inches', 'Position',[8 5 6 4.5]);
     ax_log = axes('Position',[0.12 0.13 0.82 0.80]);
     hold(ax_log, 'on');
@@ -135,7 +135,7 @@ function results = plot_CDF_with_statistics(ht)
              'Color',colors(g,:), ...
              'DisplayName',group_labels{g});
     end
-    xlabel(ax_log, 'Lag time (h)',       'FontWeight','bold');
+    xlabel(ax_log, 'Appearance time (h)',       'FontWeight','bold');
     ylabel(ax_log, 'Survival (1 - CDF)', 'FontWeight','bold');
     legend(ax_log, 'show', 'Location','northeast');
     set(ax_log, 'YScale','log', 'FontSize',11, 'Box','on');
@@ -186,7 +186,7 @@ function results = plot_CDF_with_statistics(ht)
         if ~isfield(results(g),'group') || isempty(results(g).group), continue; end
         ht_fprintf(HT_FLOG, '  %-6s  %8.2f  %10.2f  %8.2f  %9.4f  %10.4f\n', ...
             results(g).group, ...
-            results(g).min_lag, results(g).median_lag, results(g).max_lag, ...
+            results(g).min_appearance, results(g).median_appearance, results(g).max_appearance, ...
             results(g).slope.max, results(g).slope.mean);
     end
 
@@ -213,7 +213,7 @@ end  % end main function
 
 %% ================================================================
 %  LOCAL FUNCTION: build_survival
-%  Builds empirical survival S = 1 - F from a lag time vector.
+%  Builds empirical survival S = 1 - F from an appearance time vector.
 %  Returns unique x values, S, n, and finite-difference slope dS.
 %  Slope = dS/dt — rate of change of survival fraction per hour.
 % ================================================================

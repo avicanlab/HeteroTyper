@@ -1,4 +1,4 @@
-%% HeteroTyper Pipeline for Bright Plates
+%% HeteroTyper Pipeline
 % Plots combined growth curves per sample group.
 % Each line represents one individual colony, coloured distinctly.
 % Requires preprocess_pipeline_data(data) to have been run first.
@@ -74,7 +74,7 @@ function plot_combined_samples_growth_curves(ht)
         % Axes position (row 1 = top)
         left   = margin_l / fig_w;
         bottom = (margin_b + (n_sel-gi)*(panel_h+gap_y)) / fig_h;
-        ax = axes('Position',[left, bottom, panel_w/fig_w, panel_h/fig_h]); %#ok<LAXES>
+        ax = axes('Position',[left, bottom, panel_w/fig_w, panel_h/fig_h]);
 
         if isempty(grp.size_timecourse)
             ht_fprintf(HT_FLOG, 'Group %s: no valid timecourse data, skipping.\n', labels{g});

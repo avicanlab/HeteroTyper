@@ -1,4 +1,4 @@
-%% 11.11.2025 - HeteroTyper Pipeline for Bright Plates
+%% HeteroTyper Pipeline
 
 function hAxes = dscatter(X,Y, varargin)
 % DSCATTER creates a scatter plot coloured by density.

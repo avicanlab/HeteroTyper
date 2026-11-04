@@ -57,7 +57,7 @@ function plot_combined_samples_biological_replicates(ht)
     xb      = ht.xbins;
     out_dir = p.out_dir;
     incTime = p.incTime;
-    max_lag = p.max_lag;
+    max_appearance = p.max_appearance;
     bgt     = ht.biorep_group_tests;   % precomputed per-replicate data + tests (STEP 6i)
     n_reps  = length(bgt);
 
@@ -100,8 +100,8 @@ function plot_combined_samples_biological_replicates(ht)
     %      histogram counts were already computed in STEP 6i using the
     %      same bin edges as ht.groups(g).hist.*.
     %% ----------------------------------------------------------------
-    lag_step = xb.lag_step;
-    xp_lag   = xb.lag(1:end-1)          + lag_step/2;
+    appearance_step = xb.appearance_step;
+    xp_appearance   = xb.appearance(1:end-1)          + appearance_step/2;
     xp_size  = xb.size(1:end-1)         + xb.size_step/2;
     xp_area  = xb.area(1:end-1)         + xb.area_step/2;
     xp_peri  = xb.perimeter(1:end-1)    + xb.peri_step/2;
@@ -129,7 +129,7 @@ function plot_combined_samples_biological_replicates(ht)
     % bgt(r).features order, so panel_catalog{feat_id, ...} lines up with
     % bgt(r).hist{a_idx, feat_id} etc. directly.
     panel_catalog = { ...
-        xp_lag,  [incTime, max_lag+lag_step], 'Lag time (h)';      ...
+        xp_appearance,  [incTime, max_appearance+appearance_step], 'Appearance time (h)';      ...
         xp_size, [0, xb.size_upper],          'Colony size (px)';  ...
         xp_area, [0, xb.area_upper],          'Area (px)';         ...
         xp_int,  [0, int_upper],              'Intensity';         ...
@@ -297,7 +297,7 @@ function plot_combined_samples_biological_replicates(ht)
                 xlims   = panel_catalog{feat_id, 2};
                 xlbl    = panel_catalog{feat_id, 3};
 
-                ax = axes('Position', squeeze(ax_pos(gi, ci, :))'); %#ok<LAXES>
+                ax = axes('Position', squeeze(ax_pos(gi, ci, :))');
 
                 norm_p = [];
                 if ~isempty(a_idx)
@@ -326,9 +326,9 @@ function plot_combined_samples_biological_replicates(ht)
                 if y_max == 0, y_max = 1; end
                 axis([xlims(1) xlims(2) 0 y_max]);
 
-                % Lag time: decade x-ticks
+                % Appearance time: decade x-ticks
                 if feat_id == 1
-                    xticks(incTime:10:max_lag);
+                    xticks(incTime:10:max_appearance);
                 end
 
                 % Median line — precomputed
@@ -369,7 +369,7 @@ function plot_combined_samples_biological_replicates(ht)
                            'XTickLabel',{}, 'YTickLabel',{}, ...
                            'XLim',ax.XLim, 'YLim',ax.YLim);
                 uistack(ax2, 'bottom');
-                axes(ax); %#ok<LAXES>
+                axes(ax);
 
                 tlog('  %-12s  %-20s  n=%d  median=%.4g  Gini=%.4f\n', ...
                     grp_lbl, bgt(r).features{feat_id}, n_val, med_val, gini_val);
@@ -463,7 +463,7 @@ function [sel_groups, plot_feat_ix] = ask_selections(ht)
 
     fprintf('\n  FEATURES\n');
     fprintf('  +----+--------------------------+\n');
-    fprintf('  |  1 | Lag time                 |\n');
+    fprintf('  |  1 | Appearance time                 |\n');
     fprintf('  |  2 | Colony size              |\n');
     fprintf('  |  3 | Area                     |\n');
     fprintf('  |  4 | Intensity                |\n');

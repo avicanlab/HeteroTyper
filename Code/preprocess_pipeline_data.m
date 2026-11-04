@@ -29,6 +29,10 @@
 %                          .p_fdr is the Benjamini-Hochberg FDR-corrected
 %                          p-value, corrected per feature across all group
 %                          pairs tested for that feature.
+%                          .KS_p is the two-sample KS test p-value paired
+%                          with .KS_D (via kstest2); .KS_p_fdr is its own
+%                          BH-FDR correction, per feature (independent of
+%                          .p_fdr above, since it's a different test).
 %    ht.biorep_group_tests(r) - same hypothesis test as ht.pairwise, but run
 %                          separately per biological replicate (bio_rep_col),
 %                          comparing sample groups using ONLY that replicate's
@@ -38,7 +42,7 @@
 %    .label              - group label string as found in metadata (e.g. '24h')
 %    .plate_indices      - vector of plate indices in this group
 %    .n_colonies         - total valid colonies accumulated
-%    .lag_time           - [Nx1] lag time + incTime (h)
+%    .appearance_time           - [Nx1] appearance time + incTime (h)
 %    .size               - [Nx1] final colony size (px)
 %    .area               - [Nx1] area (px)
 %    .intensity          - [Nx1] total intensity
@@ -58,7 +62,7 @@
 %
 %  Additionally, these workspace variables are created for backward
 %  compatibility with scripts that reference them by name:
-%    combined_lag_time_<label>  (one per discovered group)
+%    combined_appearance_time_<label>  (one per discovered group)
 %
 %  A log file is automatically generated in the output directory:
 %    preprocess_log_YYYYMMDD_HHMMSS.txt
@@ -85,7 +89,7 @@ function preprocess_pipeline_data(data, cfg)
     p.max_col        = get_cfg(cfg, 'max_col',        default_max_col);
     p.size_threshold = get_cfg(cfg, 'size_threshold', 100);
     p.ecc_threshold  = get_cfg(cfg, 'ecc_threshold',  0.70);
-    p.lag_step       = get_cfg(cfg, 'lag_step',       0.5);
+    p.appearance_step       = get_cfg(cfg, 'appearance_step',       0.5);
 
     nr_plates = length(data.processed);
 
@@ -99,8 +103,12 @@ function preprocess_pipeline_data(data, cfg)
     user = get_user_params(data, nr_plates);
 
     p.incTime   = user.incTime;
+    % Origin subtracted from appearance times before the appearance-time Gini (see compute_gini).
+    % 'incTime' (default): Gini of appearance measured from the start of imaging.
+    % 'none': legacy behaviour (hours since inoculation). Or a number in h.
+    p.gini_appearance_origin = resolve_gini_origin(get_cfg(cfg, 'gini_appearance_origin', 'incTime'), p.incTime);
     p.img_int   = user.img_int;
-    p.max_lag   = user.max_lag;
+    p.max_appearance   = user.max_appearance;
     p.out_dir   = user.out_dir;
     p.group_col = user.group_col;
     p.bio_rep_col  = user.bio_rep_col;
@@ -133,8 +141,8 @@ function preprocess_pipeline_data(data, cfg)
     fprintf('  Imaging interval    : %.4g h\n', p.img_int);
     log_message(fid, sprintf('  Imaging interval    : %.4g h', p.img_int));
     
-    fprintf('  Max lag time        : %.4g h\n', p.max_lag);
-    log_message(fid, sprintf('  Max lag time        : %.4g h', p.max_lag));
+    fprintf('  Max appearance time        : %.4g h\n', p.max_appearance);
+    log_message(fid, sprintf('  Max appearance time        : %.4g h', p.max_appearance));
     
     fprintf('  Min colonies/plate  : %d\n',     p.min_col);
     log_message(fid, sprintf('  Min colonies/plate  : %d', p.min_col));
@@ -180,9 +188,9 @@ function preprocess_pipeline_data(data, cfg)
         % Count FINAL valid colonies (after all processing/segmentation)
         % Look at the actual segmented data structure
         if isfield(data.processed{i}.colonies, 'new') && ...
-           isfield(data.processed{i}.colonies.new, 'lag_time')
-            % Count non-NaN lag times = final valid colonies
-            n_col = sum(~isnan(data.processed{i}.colonies.new.lag_time));
+           isfield(data.processed{i}.colonies.new, 'appearance_time')
+            % Count non-NaN appearance times = final valid colonies
+            n_col = sum(~isnan(data.processed{i}.colonies.new.appearance_time));
         elseif isfield(data.processed{i}.colonies, 'region_props') && ...
                isfield(data.processed{i}.colonies.region_props, 'size')
             % Fallback: count region properties
@@ -337,7 +345,7 @@ function preprocess_pipeline_data(data, cfg)
         ecc_acc         = nan(max_colonies_est, 1);
         solid_acc       = nan(max_colonies_est, 1);
         centroid_acc    = nan(max_colonies_est, 2);
-        lag_time_acc    = nan(max_colonies_est, 1);
+        appearance_time_acc    = nan(max_colonies_est, 1);
         doubling_acc    = nan(max_colonies_est, 1);
         % Pass/fail mask for the final-timepoint size threshold
         % (p.size_threshold, default 100 px). Entries that fail are
@@ -380,7 +388,7 @@ function preprocess_pipeline_data(data, cfg)
             end
 
             c_new = colonies.new;
-            n_colonies_here = length(c_new.lag_time);
+            n_colonies_here = length(c_new.appearance_time);
 
             if n_colonies_here == 0
                 continue;
@@ -417,27 +425,27 @@ function preprocess_pipeline_data(data, cfg)
             %
             % Two corrections applied here:
             %
-            % 1) Add RT incubation time so that lag_time represents total
+            % 1) Add RT incubation time so that appearance_time represents total
             %    elapsed time from inoculation, not just imaging-phase time.
-            %    This matches the .lag_time docstring contract (line 31)
+            %    This matches the .appearance_time docstring contract (line 31)
             %    and the histogram bin edges below
-            %    (p.incTime : p.lag_step : p.max_lag).
+            %    (p.incTime : p.appearance_step : p.max_appearance).
             %
             % 2) Right-censoring: colonies that never grew within the
-            %    imaging window are stored upstream with lag_time pinned
-            %    at (or fractionally above) max_lag. These are NOT real
-            %    measured lag times -- they only mean "the colony did not
+            %    imaging window are stored upstream with appearance_time pinned
+            %    at (or fractionally above) max_appearance. These are NOT real
+            %    measured appearance times -- they only mean "the colony did not
             %    start growing before imaging ended". Including them
             %    massively biases the median and produces a fake spike at
             %    the right edge of the histogram. We convert them to NaN
             %    so they are excluded from the histogram, median, IQR,
             %    and Gini index, while still being counted in n_colonies.
             %    The number excluded per group is logged below.
-            lt_raw = c_new.lag_time(:) + p.incTime;
-            cens_tol = 0.5 * p.lag_step;
-            is_censored = ~isnan(lt_raw) & (lt_raw >= p.max_lag - cens_tol);
+            lt_raw = c_new.appearance_time(:) + p.incTime;
+            cens_tol = 0.5 * p.appearance_step;
+            is_censored = ~isnan(lt_raw) & (lt_raw >= p.max_appearance - cens_tol);
             lt_raw(is_censored) = NaN;
-            lag_time_acc(colony_idx + (1:n_colonies_here)) = lt_raw;
+            appearance_time_acc(colony_idx + (1:n_colonies_here)) = lt_raw;
             
             % Extract intensity metrics - must be careful about indexing!
             % colonies.new only has data for colonies that passed detection filters
@@ -517,19 +525,19 @@ function preprocess_pipeline_data(data, cfg)
                 ecc_acc(fail_idx)         = NaN;
                 solid_acc(fail_idx)       = NaN;
                 centroid_acc(fail_idx, :) = NaN;
-                lag_time_acc(fail_idx)    = NaN;
+                appearance_time_acc(fail_idx)    = NaN;
                 doubling_acc(fail_idx)    = NaN;
                 pass_size_acc(fail_idx)   = false;
                 n_size_rejected = n_size_rejected + sum(fail_size);
             end
 
-            % Exclude ALL morphological features for lag-censored colonies.
+            % Exclude ALL morphological features for appearance-censored colonies.
             % A censored colony never completed its lag phase within the
             % imaging window.  Its final size, shape, and intensity reflect
             % partial (ongoing) growth, not a settled phenotype, so including
             % it in any feature distribution or Gini/stats calculation would
             % mix two fundamentally different biological states.
-            % lag_time is already NaN for these colonies (set above).
+            % appearance_time is already NaN for these colonies (set above).
             % We NaN every other feature here so all downstream analyses
             % (histograms, medians, IQR, Gini, correlations, bio-rep stats)
             % automatically exclude them via the standard ~isnan() filter.
@@ -619,7 +627,7 @@ function preprocess_pipeline_data(data, cfg)
         groups(g).eccentricity = ecc_acc(1:colony_idx);
         groups(g).solidity     = solid_acc(1:colony_idx);
         groups(g).centroid     = centroid_acc(1:colony_idx, :);
-        groups(g).lag_time     = lag_time_acc(1:colony_idx);
+        groups(g).appearance_time     = appearance_time_acc(1:colony_idx);
         groups(g).doubling_time = doubling_acc(1:colony_idx);
 
         % Per-plate segment boundaries into the concatenated vectors above.
@@ -649,18 +657,18 @@ function preprocess_pipeline_data(data, cfg)
         % DOUBLING TIME: fit log-linear model to each colony's size timecourse
         %   S(t) = S0 * exp(r*t)  =>  ln S = ln S0 + r*t
         %   doubling time = ln(2) / r  (NaN if r <= 0 or fit not possible)
-        % Only the post-lag portion is used: frames where t > lag_time.
+        % Only the post-appearance portion is used: frames where t > appearance_time.
         % Falls back to all-NaN if no timecourse is available.
         % ------------------------------------------------------------------
         dt_vec = nan(colony_idx, 1);
         if tc_T > 0 && colony_idx > 0 && ~isempty(tc_time)
             tc_mat  = tc_acc(1:tc_T, 1:colony_idx);  % [T x N]
-            lt_vec  = lag_time_acc(1:colony_idx);     % [N x 1] lag times (h)
+            lt_vec  = appearance_time_acc(1:colony_idx);     % [N x 1] appearance times (h)
             for ci = 1:colony_idx
                 tc_col = tc_mat(:, ci);               % [T x 1] size timecourse
                 lt_ci  = lt_vec(ci);
                 if isnan(lt_ci), continue; end        % censored / size-failed
-                % Use frames strictly after lag time and with positive size
+                % Use frames strictly after appearance time and with positive size
                 post_mask = (tc_time > lt_ci) & (tc_col > 0) & ~isnan(tc_col);
                 if sum(post_mask) < 2, continue; end  % need >=2 points to fit
                 t_fit = tc_time(post_mask);
@@ -686,24 +694,24 @@ function preprocess_pipeline_data(data, cfg)
         groups(g).n_size_rejected = n_size_rejected;
 
         % Right-censoring bookkeeping (see censoring block above).
-        % n_lag_censored : colonies whose lag_time was pinned at max_lag
+        % n_appearance_censored : colonies whose appearance_time was pinned at max_appearance
         %                  and converted to NaN above. They are still
         %                  counted in n_colonies, but excluded from all
-        %                  lag-time stats, histograms, and CDFs.
+        %                  appearance-time stats, histograms, and CDFs.
         % NOTE: count only true right-censored colonies; entries that
         % became NaN because they failed the size threshold are tallied
         % separately as n_size_rejected.
-        % n_lag_grew     : colonies with a real (non-censored) lag time.
-        is_censored_lag = isnan(groups(g).lag_time) & groups(g).pass_size;
-        groups(g).n_lag_censored = sum(is_censored_lag);
-        groups(g).n_lag_grew     = sum(~isnan(groups(g).lag_time));
+        % n_appearance_grew     : colonies with a real (non-censored) appearance time.
+        is_censored_appearance = isnan(groups(g).appearance_time) & groups(g).pass_size;
+        groups(g).n_appearance_censored = sum(is_censored_appearance);
+        groups(g).n_appearance_grew     = sum(~isnan(groups(g).appearance_time));
         % Compute Gini indices and stats for all 10 features.
         % Histograms are computed after xbins is finalised (see below).
         groups(g).hist  = struct();
         groups(g).gini  = struct();
         groups(g).stats = struct();
 
-        feature_names = {'lag_time', 'size', 'area', 'intensity', 'mean_intensity', ...
+        feature_names = {'appearance_time', 'size', 'area', 'intensity', 'mean_intensity', ...
                         'int_per_size', 'perimeter', 'circularity', 'eccentricity', 'solidity'};
 
         for feat_idx = 1:length(feature_names)
@@ -716,7 +724,12 @@ function preprocess_pipeline_data(data, cfg)
                 continue;
             end
 
-            groups(g).gini.(feat) = compute_gini(data_vec);
+            is_appearance_feat = strcmp(feat, 'appearance_time');
+            groups(g).gini.(feat) = compute_gini(data_vec, p.gini_appearance_origin * is_appearance_feat);
+            if is_appearance_feat
+                % legacy value (hours since inoculation) kept for comparison
+                groups(g).gini.appearance_time_raw = compute_gini(data_vec);
+            end
 
             data_clean = data_vec(~isnan(data_vec));
             if ~isempty(data_clean)
@@ -737,7 +750,7 @@ function preprocess_pipeline_data(data, cfg)
         stat_sep = sprintf('  %s', repmat('-', 1, 58));
         fprintf('%s\n', stat_sep);
         log_message(fid, stat_sep);
-        feat_labels_print = {'Lag Time','Size','Area','Intensity','Mean Intensity', ...
+        feat_labels_print = {'Appearance Time','Size','Area','Intensity','Mean Intensity', ...
                              'Int/Size','Perimeter','Circularity','Eccentricity','Solidity'};
         for feat_idx = 1:length(feature_names)
             fn = feature_names{feat_idx};
@@ -753,8 +766,8 @@ function preprocess_pipeline_data(data, cfg)
         fprintf('\n');
         log_message(fid, '');
 
-        n_cens = groups(g).n_lag_censored;
-        n_grew = groups(g).n_lag_grew;
+        n_cens = groups(g).n_appearance_censored;
+        n_grew = groups(g).n_appearance_grew;
         n_rej  = groups(g).n_size_rejected;
         if colony_idx > 0
             cens_frac = 100 * n_cens / colony_idx;
@@ -773,7 +786,7 @@ function preprocess_pipeline_data(data, cfg)
         if cens_frac > 25
             warn_msg = sprintf([ ...
                 '  WARNING  Group %s: %.1f%% of colonies are right-censored.\n' ...
-                '           Reported lag-time median/IQR reflect only growers and\n' ...
+                '           Reported appearance-time median/IQR reflect only growers and\n' ...
                 '           understate the true central tendency of the population.'], ...
                 group_label, cens_frac);
             fprintf('%s\n', warn_msg);
@@ -840,10 +853,10 @@ function preprocess_pipeline_data(data, cfg)
 
         % --- final count and area: mirror STEP 4 filtering ---
         if ~isfield(colonies_i, 'new') || ...
-           ~isfield(colonies_i.new, 'lag_time')
+           ~isfield(colonies_i.new, 'appearance_time')
             continue;
         end
-        n_new = length(colonies_i.new.lag_time);
+        n_new = length(colonies_i.new.appearance_time);
         if n_new == 0, continue; end
 
         % Resolve rp_clean (same logic as STEP 4)
@@ -898,7 +911,7 @@ function preprocess_pipeline_data(data, cfg)
     %    qc_plate_time{i}     - [T x 1] elapsed time vector (h, incl. incTime)
     %    qc_plate_size_tc{i}  - [T x N] smoothed colony size timecourse
     %    qc_plate_valid{i}    - [N x 1] logical valid-colony mask (flag_colony_ok)
-    %    qc_plate_lag{i}      - [N x 1] lag times (h, incl. incTime)
+    %    qc_plate_appearance{i}      - [N x 1] appearance times (h, incl. incTime)
     %    qc_plate_early_dt{i} - [N x 1] early doubling times (h)
     %  All cell arrays are nr_plates x 1; non-growth plates hold empty cells.
     % =========================================================
@@ -907,7 +920,7 @@ function preprocess_pipeline_data(data, cfg)
     qc_plate_time     = cell(nr_plates, 1);
     qc_plate_size_tc  = cell(nr_plates, 1);
     qc_plate_valid    = cell(nr_plates, 1);
-    qc_plate_lag      = cell(nr_plates, 1);
+    qc_plate_appearance      = cell(nr_plates, 1);
     qc_plate_early_dt = cell(nr_plates, 1);
 
     for i = ix_growth(:)'
@@ -941,13 +954,13 @@ function preprocess_pipeline_data(data, cfg)
             end
         end
 
-        % --- Lag times (include incTime, apply flag mask) ---
-        if isfield(c_new_i, 'lag_time')
-            lt_i = c_new_i.lag_time(:) + p.incTime;
+        % --- Appearance times (include incTime, apply flag mask) ---
+        if isfield(c_new_i, 'appearance_time')
+            lt_i = c_new_i.appearance_time(:) + p.incTime;
             if ~isempty(flag_i) && length(lt_i) == length(flag_i)
-                qc_plate_lag{i} = lt_i(flag_i);
+                qc_plate_appearance{i} = lt_i(flag_i);
             else
-                qc_plate_lag{i} = lt_i;
+                qc_plate_appearance{i} = lt_i;
             end
         end
 
@@ -971,9 +984,9 @@ function preprocess_pipeline_data(data, cfg)
     
     xbins = struct();
     
-    % Lag time bins
-    xbins.lag_step = p.lag_step;
-    xbins.lag = p.incTime:p.lag_step:p.max_lag;
+    % Appearance time bins
+    xbins.appearance_step = p.appearance_step;
+    xbins.appearance = p.incTime:p.appearance_step:p.max_appearance;
     
     % Size bins - round to nice number
     size_step = round_to_sig(gmax.size / 100, 1);  % ~100 bins
@@ -1007,10 +1020,10 @@ function preprocess_pipeline_data(data, cfg)
     % =========================================================
     % feature_names_h / bin_map are reused as-is by STEP 6i below (per-bio-rep
     % histograms), so they are computed once here rather than per group.
-    feature_names_h = {'lag_time', 'size', 'area', 'intensity', 'mean_intensity', ...
+    feature_names_h = {'appearance_time', 'size', 'area', 'intensity', 'mean_intensity', ...
                         'int_per_size', 'perimeter', 'circularity', 'eccentricity', 'solidity'};
     bin_map = struct( ...
-        'lag_time',       xbins.lag, ...
+        'appearance_time',       xbins.appearance, ...
         'size',           xbins.size, ...
         'area',           xbins.area, ...
         'intensity',      (0 : round_to_sig(gmax.int      / 100, 1) : ceil(gmax.int      / round_to_sig(gmax.int      / 100, 1)) * round_to_sig(gmax.int      / 100, 1) + round_to_sig(gmax.int      / 100, 1)), ...
@@ -1054,15 +1067,15 @@ function preprocess_pipeline_data(data, cfg)
     %       two-sample Welch t-test (ttest2, unequal variances).
     %    3. Otherwise use the Wilcoxon rank-sum test (ranksum, i.e. the
     %       Mann-Whitney U test) — appropriate for the typically skewed,
-    %       right-censored colony-size/lag-time distributions here.
+    %       right-censored colony-size/appearance-time distributions here.
     %  Raw per-colony values are used (not the binned probability-density
     %  histogram), since binning would discard within-bin variation the
     %  rank-based test relies on.
     % =========================================================
-    pw_feat_names = {'Lag time','Colony size','Area','Intensity', ...
+    pw_feat_names = {'Appearance time','Colony size','Area','Intensity', ...
                      'Mean intensity','Intensity / size','Perimeter', ...
                      'Circularity','Eccentricity','Solidity'};
-    pw_feat_fields = {'lag_time','size','area','intensity', ...
+    pw_feat_fields = {'appearance_time','size','area','intensity', ...
                       'mean_intensity','int_per_size','perimeter', ...
                       'circularity','eccentricity','solidity'};
     n_pw_feats = length(pw_feat_fields);
@@ -1072,6 +1085,7 @@ function preprocess_pipeline_data(data, cfg)
     pw_pair_idx    = zeros(n_pw_pairs, 2);
     pw_pair_labels = cell(n_pw_pairs, 1);
     pw_KS_D        = nan(n_pw_pairs, n_pw_feats);
+    pw_KS_p        = nan(n_pw_pairs, n_pw_feats);
     pw_Q90         = nan(n_pw_pairs, n_pw_feats);
     pw_p           = nan(n_pw_pairs, n_pw_feats);
     pw_stat        = nan(n_pw_pairs, n_pw_feats);
@@ -1105,6 +1119,12 @@ function preprocess_pipeline_data(data, cfg)
                 cdf_b  = arrayfun(@(x) mean(vb <= x), all_x);
                 pw_KS_D(pi_pw, fi) = max(abs(cdf_a - cdf_b));
 
+                % Two-sample KS test p-value, paired with the D statistic
+                % above (kstest2's own ksstat matches pw_KS_D to within
+                % floating-point rounding, since it uses the same definition).
+                [~, ks_p_val] = kstest2(va, vb);
+                pw_KS_p(pi_pw, fi) = ks_p_val;
+
                 % Q90 difference: 90th percentile of b minus a
                 pw_Q90(pi_pw, fi)  = prctile(vb, 90) - prctile(va, 90);
 
@@ -1131,10 +1151,19 @@ function preprocess_pipeline_data(data, cfg)
         pw_p_fdr(:, fi) = bh_fdr(pw_p(:, fi));
     end
 
+    % Same BH-FDR correction, applied to the KS-test p-values (independent
+    % family from pw_p/pw_p_fdr above, since it's a different test).
+    pw_KS_p_fdr = nan(size(pw_KS_p));
+    for fi = 1:n_pw_feats
+        pw_KS_p_fdr(:, fi) = bh_fdr(pw_KS_p(:, fi));
+    end
+
     pairwise.feat_names  = pw_feat_names;
     pairwise.pair_idx    = pw_pair_idx;
     pairwise.pair_labels = pw_pair_labels;
     pairwise.KS_D        = pw_KS_D;
+    pairwise.KS_p        = pw_KS_p;         % two-sample KS test p-value (paired with KS_D)
+    pairwise.KS_p_fdr    = pw_KS_p_fdr;     % Benjamini-Hochberg FDR-adjusted KS p, per feature
     pairwise.Q90         = pw_Q90;
     pairwise.p           = pw_p;            % chosen test's uncorrected p-value
     pairwise.p_fdr       = pw_p_fdr;        % Benjamini-Hochberg FDR-adjusted p, per feature
@@ -1161,10 +1190,10 @@ function preprocess_pipeline_data(data, cfg)
     %    .mu_max          - per-colony maximum growth rate (NaN if fit failed)
     %    .Amax / .k / .tm - fitted Gompertz parameters
     %    .fit_ok          - logical: true where fit converged
-    %    .local_density   - 2D bin-count density (40x40 bins, mu_max vs lag_time)
-    %    .spearman_rho    - Spearman rho (mu_max vs lag_time)
+    %    .local_density   - 2D bin-count density (40x40 bins, mu_max vs appearance_time)
+    %    .spearman_rho    - Spearman rho (mu_max vs appearance_time)
     %    .spearman_p      - two-tailed p-value for Spearman rho
-    %    .quantile_slope  - median quantile regression slope (lag ~ mu_max, tau=0.5)
+    %    .quantile_slope  - median quantile regression slope (appearance ~ mu_max, tau=0.5)
     %    .quantile_intcpt - intercept of the median quantile regression
     %    .wt_spearman     - density-weighted Spearman rho
     %    .wt_qr_slope     - density-weighted quantile regression slope
@@ -1181,10 +1210,10 @@ function preprocess_pipeline_data(data, cfg)
     for g = 1:n_groups
         tc_mat  = groups(g).size_timecourse;   % [T x N]
         time_h  = groups(g).time_h;            % [T x 1]
-        lag     = groups(g).lag_time;          % [N x 1]
+        appearance     = groups(g).appearance_time;          % [N x 1]
 
         if isempty(tc_mat) || isempty(time_h)
-            groups(g).growth = empty_growth_struct(length(lag));
+            groups(g).growth = empty_growth_struct(length(appearance));
             fprintf('  %s: no timecourse — skipped.\n', groups(g).label);
             continue;
         end
@@ -1228,9 +1257,9 @@ function preprocess_pipeline_data(data, cfg)
             end
         end
 
-        ok      = fit_ok_vec & isfinite(mu_max_vec) & isfinite(lag);
+        ok      = fit_ok_vec & isfinite(mu_max_vec) & isfinite(appearance);
         mu_ok   = mu_max_vec(ok);
-        lag_ok  = lag(ok);
+        appearance_ok  = appearance(ok);
         n_ok    = sum(ok);
 
         fprintf('  %s: %d/%d fits converged.\n', groups(g).label, n_ok, n_c);
@@ -1241,11 +1270,11 @@ function preprocess_pipeline_data(data, cfg)
         if n_ok >= 2
             n_bins    = 40;
             mu_edges  = linspace(min(mu_ok),  max(mu_ok)  + eps, n_bins+1);
-            lag_edges = linspace(min(lag_ok), max(lag_ok) + eps, n_bins+1);
+            appearance_edges = linspace(min(appearance_ok), max(appearance_ok) + eps, n_bins+1);
 
             % Assign each colony to a bin index (clamp to [1, n_bins])
             bm = max(1, min(n_bins, discretize(mu_ok,  mu_edges)));
-            bl = max(1, min(n_bins, discretize(lag_ok, lag_edges)));
+            bl = max(1, min(n_bins, discretize(appearance_ok, appearance_edges)));
 
             % Build 2D count matrix and look up count for each colony
             cnt_mat = accumarray([bl, bm], 1, [n_bins, n_bins]);
@@ -1255,16 +1284,16 @@ function preprocess_pipeline_data(data, cfg)
             local_density(ok) = local_density_ok;
         end
 
-        % --- Spearman correlation (mu_max vs lag_time) -------------------
+        % --- Spearman correlation (mu_max vs appearance_time) -------------------
         sp_rho = NaN;  sp_p = NaN;
         if n_ok >= 3
-            [sp_rho, sp_p] = corr(mu_ok, lag_ok, 'Type', 'Spearman');
+            [sp_rho, sp_p] = corr(mu_ok, appearance_ok, 'Type', 'Spearman');
         end
 
-        % --- Median quantile regression: lag ~ mu_max, tau = 0.5 --------
+        % --- Median quantile regression: appearance ~ mu_max, tau = 0.5 --------
         qr_slope = NaN;  qr_intcpt = NaN;
         if n_ok >= 4
-            [qr_slope, qr_intcpt] = quantile_regression(lag_ok, mu_ok, 0.5, []);
+            [qr_slope, qr_intcpt] = quantile_regression(appearance_ok, mu_ok, 0.5, []);
         end
 
         % --- Density-weighted Spearman and QR ----------------------------
@@ -1275,13 +1304,13 @@ function preprocess_pipeline_data(data, cfg)
             w_norm = w / sum(w);
             % Weighted rank correlation approximation via rank transform
             [~, rmu]  = sort(mu_ok);   rank_mu  = zeros(n_ok,1); rank_mu(rmu)  = (1:n_ok)';
-            [~, rlag] = sort(lag_ok);  rank_lag = zeros(n_ok,1); rank_lag(rlag) = (1:n_ok)';
-            wt_sp = sum(w_norm .* rank_mu .* rank_lag) / ...
-                    sqrt(sum(w_norm .* rank_mu.^2) * sum(w_norm .* rank_lag.^2) + eps);
+            [~, rappearance] = sort(appearance_ok);  rank_appearance = zeros(n_ok,1); rank_appearance(rappearance) = (1:n_ok)';
+            wt_sp = sum(w_norm .* rank_mu .* rank_appearance) / ...
+                    sqrt(sum(w_norm .* rank_mu.^2) * sum(w_norm .* rank_appearance.^2) + eps);
         end
         if n_ok >= 4 && any(local_density_ok > 0)
             w_vec = local_density_ok(:);
-            [wt_qr_slope, ~] = quantile_regression(lag_ok, mu_ok, 0.5, w_vec);
+            [wt_qr_slope, ~] = quantile_regression(appearance_ok, mu_ok, 0.5, w_vec);
         end
 
         groups(g).growth.mu_max         = mu_max_vec;
@@ -1300,29 +1329,29 @@ function preprocess_pipeline_data(data, cfg)
 
 
     % =========================================================
-    %  STEP 6e - Lag time vs morphology: Pearson + Spearman correlations
+    %  STEP 6e - Appearance time vs morphology: Pearson + Spearman correlations
     %            and linear regression per feature per group.
     %
     %  For each group and each morphological feature, computes:
-    %    .r          - Pearson r (lag_time vs feature)
+    %    .r          - Pearson r (appearance_time vs feature)
     %    .r_sq       - R^2 = r^2
     %    .p_pearson  - two-tailed p-value for Pearson r
     %    .rho        - Spearman rho
     %    .p_spearman - two-tailed p-value for Spearman rho
-    %    .slope      - linear regression slope (feature ~ lag_time)
+    %    .slope      - linear regression slope (feature ~ appearance_time)
     %    .intercept  - linear regression intercept
     %    .eq_str     - equation string  "y = m*x + b"
     %
     %  Stored in groups(g).morph_corr.(feature_field)
     % =========================================================
-    fprintf('\nSTEP 6e: Computing lag time vs morphology correlations...\n');
+    fprintf('\nSTEP 6e: Computing appearance time vs morphology correlations...\n');
 
     morph_fields = {'size','area','intensity','mean_intensity', ...
                     'int_per_size','perimeter','circularity', ...
                     'eccentricity','solidity'};
 
     for g = 1:n_groups
-        lag = groups(g).lag_time;   % [N x 1], NaN for censored colonies
+        appearance = groups(g).appearance_time;   % [N x 1], NaN for censored colonies
         groups(g).morph_corr = struct();
 
         for fi = 1:length(morph_fields)
@@ -1334,13 +1363,13 @@ function preprocess_pipeline_data(data, cfg)
                         'rho',NaN,'p_spearman',NaN, ...
                         'slope',NaN,'intercept',NaN,'eq_str','');
 
-            if isempty(feat) || isempty(lag)
+            if isempty(feat) || isempty(appearance)
                 groups(g).morph_corr.(fld) = mc;
                 continue;
             end
 
-            ok = isfinite(lag) & isfinite(feat);
-            x  = lag(ok);
+            ok = isfinite(appearance) & isfinite(feat);
+            x  = appearance(ok);
             y  = feat(ok);
             n_ok = sum(ok);
 
@@ -1373,7 +1402,7 @@ function preprocess_pipeline_data(data, cfg)
         end
 
         fprintf('  %s: morph correlations done (n=%d valid colonies)\n', ...
-            groups(g).label, sum(isfinite(lag)));
+            groups(g).label, sum(isfinite(appearance)));
     end
 
     % =========================================================
@@ -1461,10 +1490,10 @@ function preprocess_pipeline_data(data, cfg)
     fprintf('  statistics are computed.  Technical replicates are NOT compared\n');
     fprintf('  against each other.\n\n');
 
-    biorep_feat_fields = {'lag_time','size','area','intensity', ...
+    biorep_feat_fields = {'appearance_time','size','area','intensity', ...
                           'mean_intensity','int_per_size','perimeter', ...
                           'circularity','eccentricity','solidity'};
-    biorep_feat_labels = {'Lag Time','Colony Size','Area','Intensity', ...
+    biorep_feat_labels = {'Appearance Time','Colony Size','Area','Intensity', ...
                           'Mean Intensity','Int/Size','Perimeter', ...
                           'Circularity','Eccentricity','Solidity'};
     n_brf = length(biorep_feat_fields);
@@ -1590,7 +1619,7 @@ function preprocess_pipeline_data(data, cfg)
             end
 
             c_new_k = data.processed{pi_k}.colonies.new;
-            n_col_k = length(c_new_k.lag_time);
+            n_col_k = length(c_new_k.appearance_time);
             if n_col_k == 0, continue; end
 
             col_k = data.processed{pi_k}.colonies;
@@ -1611,9 +1640,9 @@ function preprocess_pipeline_data(data, cfg)
             end
 
             % Build feature vectors for this plate
-            lt_k = c_new_k.lag_time(:) + p.incTime;
-            cens_tol_k = 0.5 * p.lag_step;
-            lt_k(lt_k >= p.max_lag - cens_tol_k) = NaN;
+            lt_k = c_new_k.appearance_time(:) + p.incTime;
+            cens_tol_k = 0.5 * p.appearance_step;
+            lt_k(lt_k >= p.max_appearance - cens_tol_k) = NaN;
 
             sz_k = nan(n_col_k,1);  ar_k = nan(n_col_k,1);
             ec_k = nan(n_col_k,1);  pe_k = nan(n_col_k,1);
@@ -1656,8 +1685,8 @@ function preprocess_pipeline_data(data, cfg)
             pe_k(fail_k) = NaN;  ci_k(fail_k) = NaN;  ec_k(fail_k) = NaN;
             so_k(fail_k) = NaN;
 
-            % Lag-censoring exclusion (same rule as STEP 4):
-            % NaN all morphology for colonies with undetectable lag time.
+            % Appearance-censoring exclusion (same rule as STEP 4):
+            % NaN all morphology for colonies with undetectable appearance time.
             cens_k = isnan(lt_k);
             sz_k(cens_k) = NaN;  ar_k(cens_k) = NaN;
             in_k(cens_k) = NaN;  mi_k(cens_k) = NaN;  ip_k(cens_k) = NaN;
@@ -1763,7 +1792,8 @@ function preprocess_pipeline_data(data, cfg)
 
                         % |ΔGini| on raw colony values (not PDF bins)
                         delta_gini_mat(pi_br, fi) = abs( ...
-                            compute_gini(va(:)) - compute_gini(vb(:)));
+                            compute_gini(va(:), p.gini_appearance_origin * strcmp(biorep_feat_fields{fi}, 'appearance_time')) ...
+                            - compute_gini(vb(:), p.gini_appearance_origin * strcmp(biorep_feat_fields{fi}, 'appearance_time')));
                     end
 
                     % --- Absolute median difference ----------------------
@@ -1783,7 +1813,7 @@ function preprocess_pipeline_data(data, cfg)
             for fi = 1:n_brf
                 v = rep_data{r}{fi};
                 if length(v) < 2, continue; end
-                gini_values_mat(r, fi) = compute_gini(v(:));
+                gini_values_mat(r, fi) = compute_gini(v(:), p.gini_appearance_origin * strcmp(biorep_feat_fields{fi}, 'appearance_time'));
             end
         end
 
@@ -1882,7 +1912,7 @@ function preprocess_pipeline_data(data, cfg)
     %  Colonies are pooled per (replicate, sample group) using the
     %  plate_seg_start/plate_seg_end boundaries recorded during STEP 4 —
     %  this correctly excludes colonies NaN-masked by the final-size
-    %  filter / lag-censoring, unlike naively slicing by raw plate
+    %  filter / appearance-censoring, unlike naively slicing by raw plate
     %  colony count.
     %
     %  Results stored in ht.biorep_group_tests(r):
@@ -1990,7 +2020,7 @@ function preprocess_pipeline_data(data, cfg)
                     n_mat(a, fi) = length(v);
                     if isempty(v), continue; end
                     med_mat(a, fi)  = median(v);
-                    gini_mat(a, fi) = compute_gini(v);
+                    gini_mat(a, fi) = compute_gini(v, p.gini_appearance_origin * strcmp(feature_names_h{fi}, 'appearance_time'));
                     bin_edges = bin_map.(feature_names_h{fi});
                     counts = histcounts(v, bin_edges);
                     total  = sum(counts);
@@ -2088,7 +2118,7 @@ function preprocess_pipeline_data(data, cfg)
     ht.biorep_group_tests = biorep_group_tests;  % per-replicate, cross-group hypothesis tests (STEP 6i)
 
     % Metadata table — stored so downstream plot scripts (e.g.
-    % plot_lagTime_scatter_violin) can access all metadata columns
+    % plot_appearanceTime_scatter_violin) can access all metadata columns
     % without needing the raw  data  struct in the workspace.
     if isfield(data, 'metadata') && isfield(data.metadata, 'original')
         ht.metadata = data.metadata.original;   % full MATLAB table
@@ -2098,7 +2128,7 @@ function preprocess_pipeline_data(data, cfg)
 
     % Per-plate biological + technical replicate labels
     % Stored as ht.plate_labels{i} = 'BioRep_TechRep' (or just 'BioRep')
-    % so plot_lagTime_scatter_violin can label the x-axis without raw data.
+    % so plot_appearanceTime_scatter_violin can label the x-axis without raw data.
     ht.plate_labels = build_plate_labels(ht.metadata, p, nr_plates);
 
     % Per-plate QC data — used by plot_QC_full_dataset (no raw data access needed)
@@ -2116,7 +2146,7 @@ function preprocess_pipeline_data(data, cfg)
     ht.qc.plate_time           = qc_plate_time;          % cell: per-plate time vector (h)
     ht.qc.plate_size_tc        = qc_plate_size_tc;       % cell: per-plate size timecourse [T x N]
     ht.qc.plate_valid          = qc_plate_valid;         % cell: per-plate valid-colony logical mask
-    ht.qc.plate_lag            = qc_plate_lag;           % cell: per-plate lag times (h)
+    ht.qc.plate_appearance            = qc_plate_appearance;           % cell: per-plate appearance times (h)
     ht.qc.plate_early_dt       = qc_plate_early_dt;      % cell: per-plate early doubling times (h)
 
     % Per-plate final colony size — used by plot_morphology_colonies_Gini.
@@ -2131,9 +2161,9 @@ function preprocess_pipeline_data(data, cfg)
     fprintf('ht structure assigned to workspace.\n');
     fprintf('  ht.qc  — per-plate QC counts, area arrays, manual counts, growth data\n');
     fprintf('Run: plot_combined_samples(ht);\n');
-    fprintf('Run: plot_lagTime_colonies_Gini(ht, data);        %% lag time violin + Gini\n');
-    fprintf('Run: plot_morphology_colonies_Gini(ht, data);     %% lag time + colony size violin + Gini\n');
-    fprintf('Run: plot_lagTime_vs_growthRate(ht);  %% Gompertz trade-off plot\n');
+    fprintf('Run: plot_appearanceTime_colonies_Gini(ht, data);        %% appearance time violin + Gini\n');
+    fprintf('Run: plot_morphology_colonies_Gini(ht, data);     %% appearance time + colony size violin + Gini\n');
+    fprintf('Run: plot_appearanceTime_vs_growthRate(ht);  %% Gompertz trade-off plot\n');
     fprintf('Run: plot_QC_full_dataset(ht);        %% Plots 1, 1A, 2\n');
     fprintf('Run: plot_QC_full_dataset(ht, data);  %% + image montage\n');
     fprintf('Run: plot_QC_growth_data(ht);          %% growth QC plots\n');
@@ -2296,8 +2326,25 @@ end
 %% ================================================================
 %  LOCAL FUNCTION: compute_gini
 %  Gini index (0 = perfectly equal, 1 = maximally unequal).
+%
+%  g = compute_gini(x)          Gini of x as given
+%  g = compute_gini(x, origin)  Gini of (x - origin)
+%
+%  WHY THE ORIGIN MATTERS (appearance time):
+%  The Gini coefficient is G = MD / (2*mean), where MD is the mean
+%  absolute difference between two random colonies. MD is unchanged by
+%  adding a constant to every colony, but the mean is not. Appearance times in
+%  ht are "hours since inoculation" (= pipeline appearance + incTime), so the
+%  constant RT incubation time sits in the denominator and shrinks G
+%  towards 0 for ANY spread. For appearance time, pass origin = p.incTime so G
+%  describes the appearance measured from the start of imaging.
+%  Features that are true ratio-scale quantities (size, area,
+%  intensity, ...) use origin = 0.
 % ================================================================
-function g = compute_gini(x)
+function g = compute_gini(x, origin)
+    if nargin < 2 || isempty(origin), origin = 0; end
+    x = x(:) - origin;
+    x(x < 0 & x > -1e-9) = 0;          % float round-off exactly at the origin
     x = x(isfinite(x) & x >= 0);
     if isempty(x) || sum(x) == 0
         g = 0;
@@ -2307,6 +2354,26 @@ function g = compute_gini(x)
     n = length(x);
     g = (2 * sum((1:n)' .* x) / (n * sum(x))) - (n+1)/n;
     g = max(0, min(1, g));
+end
+
+
+%% ================================================================
+%  LOCAL FUNCTION: resolve_gini_origin
+%  cfg.gini_appearance_origin: 'incTime' (default) | 'none' | numeric (h)
+% ================================================================
+function o = resolve_gini_origin(v, incTime)
+    if isnumeric(v) && isscalar(v)
+        o = v;
+    elseif ischar(v) || isstring(v)
+        switch lower(char(v))
+            case 'inctime', o = incTime;
+            case 'none',    o = 0;
+            otherwise
+                error('cfg.gini_appearance_origin must be ''incTime'', ''none'' or a number (h).');
+        end
+    else
+        o = incTime;
+    end
 end
 
 
@@ -2502,8 +2569,8 @@ function params = get_user_params(data, nr_plates)
         fprintf('   -> Imaging interval: %.4g h\n', img_int);
     end
 
-    % 3. Lag time
-    fprintf('\n--- 3) Lag Time ---\n');
+    % 3. Appearance time
+    fprintf('\n--- 3) Appearance Time ---\n');
     max_img_count = 0;
     for k = 1:nr_plates
         if isfield(data.processed{k}.colonies.new, 'timecourse_size_smoothed')
@@ -2511,30 +2578,30 @@ function params = get_user_params(data, nr_plates)
             max_img_count = max(max_img_count, n);
         end
     end
-    max_lag_calc = incTime + (max_img_count - 1) * img_int;
+    max_appearance_calc = incTime + (max_img_count - 1) * img_int;
 
     fprintf('   Max image count found: %d images\n', max_img_count);
-    h_part = floor(max_lag_calc);
-    m_part = round((max_lag_calc - h_part) * 60);
+    h_part = floor(max_appearance_calc);
+    m_part = round((max_appearance_calc - h_part) * 60);
     if m_part == 0
-        fprintf('   Formula: %.4g + (%d-1) x %.4g = %.4g h\n', incTime, max_img_count, img_int, max_lag_calc);
+        fprintf('   Formula: %.4g + (%d-1) x %.4g = %.4g h\n', incTime, max_img_count, img_int, max_appearance_calc);
     else
         fprintf('   Formula: %.4g + (%d-1) x %.4g = %.4g h  (%d h %d min)\n', ...
-                incTime, max_img_count, img_int, max_lag_calc, h_part, m_part);
+                incTime, max_img_count, img_int, max_appearance_calc, h_part, m_part);
     end
-    fprintf('   Press ENTER to use calculated value (%.4g h), or enter override: ', max_lag_calc);
-    raw_lag = strtrim(input('', 's'));
-    if isempty(raw_lag)
-        max_lag = max_lag_calc;
-        fprintf('   -> Using calculated max lag time: %.4g h\n', max_lag);
+    fprintf('   Press ENTER to use calculated value (%.4g h), or enter override: ', max_appearance_calc);
+    raw_appearance = strtrim(input('', 's'));
+    if isempty(raw_appearance)
+        max_appearance = max_appearance_calc;
+        fprintf('   -> Using calculated max appearance time: %.4g h\n', max_appearance);
     else
-        custom = str2double(raw_lag);
+        custom = str2double(raw_appearance);
         if ~isnan(custom) && custom > 0
-            max_lag = custom;
-            fprintf('   -> Using custom max lag time: %.4g h\n', max_lag);
+            max_appearance = custom;
+            fprintf('   -> Using custom max appearance time: %.4g h\n', max_appearance);
         else
             fprintf('   WARNING  Invalid — falling back to calculated value.\n');
-            max_lag = max_lag_calc;
+            max_appearance = max_appearance_calc;
         end
     end
 
@@ -2670,7 +2737,7 @@ function params = get_user_params(data, nr_plates)
 
     params.incTime      = incTime;
     params.img_int      = img_int;
-    params.max_lag      = max_lag;
+    params.max_appearance      = max_appearance;
     params.out_dir      = out_dir;
     params.group_col    = group_col;
     params.bio_rep_col  = bio_rep_col;
