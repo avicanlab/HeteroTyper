@@ -1,4 +1,4 @@
-# Export data to directory from MATLAB — `export_colony_images_img_intPerSize_threshold.m`
+# Export data to directory from MATLAB — `export_colony_img_intPerSize_threshold.m`
 
 ## Purpose
 

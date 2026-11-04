@@ -46,7 +46,7 @@ Eight metrics are printed in the top-right corner of the blended image:
 
 | Label | Metric |
 |---|---|
-| Lag | Lag time (h) from `colonies.new.lag_time` |
+| Appearance | Appearance time (h) from `colonies.new.appearance_time` |
 | Size | Final colony size (px) from `timecourse_size_smoothed(end)` |
 | Area | Colony area (px) from `region_props` |
 | Int | Final colony intensity from `timecourse_intensity_smoothed(end)` |

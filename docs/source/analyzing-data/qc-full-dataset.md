@@ -13,7 +13,7 @@ optional image montage (Plot 3).
 
 ## Requirements
 
-- MATLAB R2020a or later (`exportgraphics` required).
+- MATLAB R2023b or later (`exportgraphics` required).
 - `preprocess_pipeline_data(data);` must be run first to generate the `ht` struct,
   including the `ht.qc` subfield.
 
@@ -110,4 +110,4 @@ plot_QC_full_dataset(ht, data);
 | Plot 2 not produced / "No plates pass QC filter" | All plates failed the colony count filter (`[min_col, max_col]`). Review the thresholds in `preprocess_pipeline_data` or check that `growth_quant == 1` for the relevant plates. |
 | Plot 3 not produced / "data not supplied" | Call the function as `plot_QC_full_dataset(ht, data)` rather than `plot_QC_full_dataset(ht)`. |
 | Image crop is entirely black | The `imcrop` region `[1500, 1500, 1000, 1000]` falls outside the plate image boundaries. The plate images may be smaller than expected. Adjust the crop coordinates in the script if needed. |
-| `exportgraphics` error | Requires MATLAB R2020a+. Use `print()` as a fallback on older versions. |
+| `exportgraphics` error | Requires MATLAB R2023b or later. Use `print()` as a fallback on older versions. |

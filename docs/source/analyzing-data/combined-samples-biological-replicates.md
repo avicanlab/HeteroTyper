@@ -1,4 +1,4 @@
-# Lag time and other phenotypic features for each biological replicate
+# Appearance time and other phenotypic features for each biological replicate
 
 `plot_combined_samples_biological_replicates.m`
 
@@ -14,7 +14,7 @@ only in the pooled view.
 
 ## Requirements
 
-- MATLAB R2020a or later (`exportgraphics` required).
+- MATLAB R2023b or later (`exportgraphics` required).
 - `preprocess_pipeline_data(data);` must be run first to generate the `ht` struct.
 - `ht.metadata` must be a non-empty table containing a column that identifies the
   biological replicate for each plate.
@@ -103,4 +103,4 @@ At the prompt, enter groups and features. Example session:
 | No biological replicates found | The chosen metadata column had no populated values for the selected plates, please pick a different column or add relative information on metadata file. |
 | "no data" in a panel | That group had zero valid colonies within that specific replicate, not an error. |
 | Group label not recognised | Labels are case-insensitive; the label just has to match one shown in the menu. |
-| `exportgraphics` error | Requires MATLAB R2020a+. |
+| `exportgraphics` error | Requires MATLAB R2023b or later. Use `print()` as a fallback on older versions. |

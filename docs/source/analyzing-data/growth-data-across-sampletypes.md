@@ -7,7 +7,7 @@
 An exploratory visualisation script that works directly on the raw `data` struct
 returned by `heterotyper`. It splits plates into four
 hard-coded time groups (3H, 7H, 24H, 48H) read from `data.metadata.original.Time`, then
-generates a suite of per-plate and summary figures covering colony size, lag time, and
+generates a suite of per-plate and summary figures covering colony size, appearance time, and
 early doubling time distributions and pairwise scatter plots. Unlike the other pipeline
 scripts, this function takes the raw `data` struct (not `ht`), uses hard-coded parameter
 values in the script body, and does not write figure files to disk or produce a log
@@ -42,8 +42,8 @@ your experiment differs:
 
 | Parameter | Default / Description |
 |---|---|
-| `incTime` | 20 h — room temperature incubation time added to all lag times |
-| `max_lag` | 52 h — maximum lag time used for axis limits and bin ranges |
+| `incTime` | 20 h — room temperature incubation time added to all appearance times |
+| `max_appearance` | 52 h — maximum appearance time used for axis limits and bin ranges |
 | `min_col` / `max_col` | 10 / 650 — colony count filter; plates outside this range are excluded |
 | `n_groups` / `max_plate` | 4 / 6 — number of time groups and maximum plates per group for subplot grids |
 | `max_val` | 4100 px — colony size axis ceiling; must be set after a first exploratory run |
@@ -52,9 +52,9 @@ your experiment differs:
 ## Figures Produced
 
 Ten interactive figure windows are opened (not saved to disk). They show: final colony
-size vs intensity (scatter), per-plate size / lag time / early doubling time
-histograms, pairwise density scatter plots (`dscatter`) for size–lag, size–earlyDT, and
-lag–earlyDT, plain scatter equivalents of the same pairs, overlaid distribution line
+size vs intensity (scatter), per-plate size / appearance time / early doubling time
+histograms, pairwise density scatter plots (`dscatter`) for size–appearance, size–earlyDT, and
+appearance–earlyDT, plain scatter equivalents of the same pairs, overlaid distribution line
 plots with median markers, and a four-panel per-group median summary.
 
 ## Output Struct
@@ -65,7 +65,7 @@ containing:
 | Field | Description |
 |---|---|
 | `median_size` | Per-plate median final colony size, one cell per time group |
-| `median_lagtime` | Per-plate median lag time, one cell per time group |
+| `median_appearancetime` | Per-plate median appearance time, one cell per time group |
 | `median_earlyDT` | Per-plate median early doubling time, one cell per time group |
 | `col_nr` | Per-plate colony count, one cell per time group |
 | `sample_types` | Cell array of group labels: `{'3H', '7H', '24H', '48H'}` |

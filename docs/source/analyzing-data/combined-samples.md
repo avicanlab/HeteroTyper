@@ -1,4 +1,4 @@
-# Lag time and other phenotypic features
+# Appearance time and other phenotypic features
 
 `plot_combined_samples.m`
 
@@ -14,7 +14,7 @@ the terminal and exports it as an Excel workbook (one sheet per sample group) if
 
 ## Requirements
 
-- MATLAB R2020a or later (`exportgraphics` required).
+- MATLAB R2023b or later (`exportgraphics` required).
 - `preprocess_pipeline_data(data);` must be run first to generate the `ht` struct.
 
 ## Usage
@@ -46,7 +46,7 @@ The 10 available features are:
 
 | Parameter | Feature |
 |---|---|
-| 1 | Lag time (h) |
+| 1 | Appearance time (h) |
 | 2 | Colony size (px) |
 | 3 | Area (px) |
 | 4 | Intensity |
@@ -72,6 +72,19 @@ shows:
 - Filled bar histogram (probability density) in the group colour
 - Red vertical median line
 - Group label and Gini index in the top-left corner
+- `n = …` label below the Gini index: the number of colonies actually plotted in that
+  panel (non-NaN values for that feature, i.e. after size filtering and with censored
+  colonies excluded). New in v1.1.0.
+
+:::{note}
+From v1.1.0 the appearance-time Gini shown here (read from `ht.groups(g).gini`) is
+computed relative to `ht.params.gini_appearance_origin` (default `incTime`, i.e.
+appearance measured from the start of imaging), so it is higher than the v1.0.0 value.
+The v1.0.0-style value (hours since inoculation) is kept for comparison in
+`ht.groups(g).gini.appearance_time_raw`. See
+[Appearance time distributions per plate with Gini coefficient](appearance-time-colonies-gini.md)
+for the reasoning.
+:::
 
 Mirror tick marks are drawn on the top and right axes of every panel for a
 publication-ready appearance.
@@ -132,7 +145,7 @@ with a replicate column. No Excel file is written in that case.
 |---|---|
 | Group label not recognised | Labels are case-insensitive; the label just has to match one shown in the menu (e.g. `'24h'` or `'24H'`). |
 | Empty / flat histogram for a feature | No valid values exist for that feature in that group. Check that the feature was measured during acquisition. |
-| `exportgraphics` error | Requires MATLAB R2020a+. Use `print()` as a fallback on older versions. |
+| `exportgraphics` error | Requires MATLAB R2023b or later. Use `print()` as a fallback on older versions. |
 | Log file not created | Check that `ht.params.out_dir` exists and is writable. |
 | "BIOLOGICAL REPLICATE STATISTICS — SKIPPED" printed; no Excel file | No biological replicate column was selected when `preprocess_pipeline_data` was run. Re-run `preprocess_pipeline_data` and at parameter step 6 select the metadata column identifying each biological replicate (e.g. "Set", "BioRep") — do NOT press 0. |
 | "No biorep_corr field found" printed; no Excel file | The `ht` struct was produced by an older version of `preprocess_pipeline_data` that did not include STEP 6f. Re-run the updated `preprocess_pipeline_data(data)` to regenerate `ht` with the `biorep_corr` field populated. |

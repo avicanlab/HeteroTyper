@@ -10,7 +10,7 @@ are directly comparable.
 
 ## Requirements
 
-- MATLAB R2020a or later (`exportgraphics` required).
+- MATLAB R2023b or later (`exportgraphics` required).
 - `preprocess_pipeline_data(data);` must be run first to generate the `ht` struct.
 
 ## Usage
@@ -87,6 +87,6 @@ plot_combined_samples_growth_curves(ht);
 | Parameter | Description |
 |---|---|
 | Blank / "No valid colonies" panel | No colonies passed QC for that group. Review `size_threshold` and `ecc_threshold` in `preprocess_pipeline_data`. |
-| `exportgraphics` error | Requires MATLAB R2020a+. Use `print()` as a fallback on older versions. |
+| `exportgraphics` error | Requires MATLAB R2023b or later. Use `print()` as a fallback on older versions. |
 | Log file not created | Check that `ht.params.out_dir` exists and is writable. |
 | Y-axis too compressed | One group has very large colonies. Adjust `y_ceil` manually at the top of the function. |

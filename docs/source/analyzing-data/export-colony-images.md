@@ -3,7 +3,7 @@
 ## Purpose
 
 Exports cropped colony images (blended raw greyscale + colour segmentation mask) for
-colonies whose lag time exceeds a user-defined threshold. Images are annotated with
+colonies whose appearance time exceeds a user-defined threshold. Images are annotated with
 nine per-colony metrics. Uses the same colony population as `plot_combined_samples` —
 filtering is applied consistently via `ht.groups`; no re-filtering from raw `data`.
 
@@ -15,7 +15,7 @@ filtering is applied consistently via `ht.groups`; no re-filtering from raw `dat
 
 ## Usage
 
-One interactive prompt asks for the lag-time threshold before export begins.
+One interactive prompt asks for the appearance-time threshold before export begins.
 
 ```matlab
 export_colony_images(data, ht);
@@ -25,19 +25,19 @@ export_colony_images(data, ht);
 
 | Prompt | Description |
 |---|---|
-| Lag-time threshold (h) | Only colonies with `lag_time > threshold` are exported. Enter a non-negative number (e.g. 38). The threshold is logged and saved with the output. |
+| Appearance-time threshold (h) | Only colonies with `appearance_time > threshold` are exported. Enter a non-negative number (e.g. 38). The threshold is logged and saved with the output. |
 
 ## Colony population
 
 Colonies must satisfy: `~isnan(grp.size)` (passed size filter, same as
-`plot_combined_samples`) AND `isfinite(grp.lag_time)` AND `lag_time > threshold`. No
+`plot_combined_samples`) AND `isfinite(grp.appearance_time)` AND `appearance_time > threshold`. No
 eccentricity filter is applied, consistent with `plot_combined_samples`.
 
 ## Image format
 
 Each image is a 301×301 px (max) crop centred on the colony centroid, blending a
 contrast-stretched greyscale background with the colour segmentation mask. Nine metrics
-are printed in the top-right corner: `Lag`, `Size`, `Int`, `MeanInt`, `IntSize`, `Cir`,
+are printed in the top-right corner: `Appearance`, `Size`, `Int`, `MeanInt`, `IntSize`, `Cir`,
 `Ecc`, `Sol`, `Peri`.
 
 ## Output directory
@@ -56,7 +56,7 @@ Images are saved to a dedicated subfolder to keep the main output directory clea
 ## Typical Workflow
 
 ```matlab
-% Export colonies with lag time above threshold
+% Export colonies with appearance time above threshold
 export_colony_images(data, ht);
 ```
 
@@ -64,6 +64,6 @@ export_colony_images(data, ht);
 
 | Error / Symptom | Resolution |
 |---|---|
-| No images exported | No colonies exceed the lag-time threshold for any plate. Try a lower threshold. |
+| No images exported | No colonies exceed the appearance-time threshold for any plate. Try a lower threshold. |
 | `insertText` error | Requires Computer Vision Toolbox or Image Processing Toolbox with `insertText` support. |
 | Crop is blank or misaligned | Centroid coordinates in `ht.groups` are `NaN` for size-rejected colonies. Only non-`NaN` centroid entries are exported — check that valid colonies exist for that plate. |
